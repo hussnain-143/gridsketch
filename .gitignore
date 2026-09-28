@@ -1,6 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -10,32 +8,94 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# Next.js Build Outputs
 /.next/
 /out/
-
-# production
 /build
 
-# misc
-.DS_Store
-*.pem
+# Testing & Coverage
+/coverage
+*.lcov
 
-# debug
+# Environment Variables
+.env*
+!.env.example
+
+# Debug Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.AppleDouble
+.LSOverride
 
-# vercel
-.vercel
+# Editor & IDE Directories
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# typescript
+# TypeScript & Next.js cache
 *.tsbuildinfo
 next-env.d.ts
+
+# Vercel
+.vercel
+
+# Mobile App Binaries & Bundles
+*.apk
+*.aab
+*.ap_
+GridSketch.apk
+
+# Android Build Artifacts & Local Configs
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
+android/*.iml
+android/*/*.iml
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/**/*.apk
+android/**/*.aab
+
+# iOS Build Artifacts & User Data
+ios/App/build/
+ios/App/DerivedData/
+ios/App/Pods/
+ios/App/.symlinks/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Certificates & Signing Keys
+*.keystore
+*.jks
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Scratch & Temporary Test Assets
+scripts/test_*.png
+scripts/temp_*
