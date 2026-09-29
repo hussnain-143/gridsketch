@@ -20,6 +20,7 @@ import {
   Crop as CropIcon,
   ChevronDown,
   Sparkles,
+  Menu,
 } from 'lucide-react';
 
 export type MobileEditTab = 'grid' | 'fit' | 'paper' | 'modes' | 'crop';
@@ -41,6 +42,7 @@ interface MobileEditDrawerProps {
   onToggleOpen: () => void;
   activeTab: MobileEditTab;
   onSelectTab: (tab: MobileEditTab) => void;
+  onOpenMenu?: () => void;
 }
 
 export function MobileEditDrawer({
@@ -60,6 +62,7 @@ export function MobileEditDrawer({
   onToggleOpen,
   activeTab,
   onSelectTab,
+  onOpenMenu,
 }: MobileEditDrawerProps) {
   const tabs: { id: MobileEditTab; label: string; icon: React.ElementType }[] = [
     { id: 'grid', label: 'Grid', icon: Grid3X3 },
@@ -117,14 +120,26 @@ export function MobileEditDrawer({
                 })}
               </div>
 
-              {/* Minimize Drawer Button */}
-              <button
-                onClick={onToggleOpen}
-                className="p-1.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.15)] text-[#7dd3fc] hover:bg-[#7dd3fc]/15 transition-all shrink-0"
-                title="Minimize Drawer"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
+              {/* Action Buttons: Menu & Minimize */}
+              <div className="flex items-center gap-1 shrink-0">
+                {onOpenMenu && (
+                  <button
+                    onClick={onOpenMenu}
+                    className="p-1.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.15)] text-[#7dd3fc] hover:bg-[#7dd3fc]/15 active:scale-95 transition-all"
+                    title="Open Studio Menu"
+                    aria-label="Open Studio Menu"
+                  >
+                    <Menu className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={onToggleOpen}
+                  className="p-1.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.15)] text-[#7dd3fc] hover:bg-[#7dd3fc]/15 active:scale-95 transition-all"
+                  title="Minimize Drawer"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -201,6 +216,20 @@ export function MobileEditDrawer({
                 </button>
               );
             })}
+
+            {onOpenMenu && (
+              <button
+                onClick={onOpenMenu}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#7dd3fc] active:scale-95"
+                title="Studio Menu"
+                aria-label="Studio Menu"
+              >
+                <div className="p-1.5 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.1)] hover:border-[#7dd3fc]/30">
+                  <Menu className="w-4 h-4 text-[#7dd3fc]" />
+                </div>
+                <span className="truncate">Menu</span>
+              </button>
+            )}
           </nav>
         )}
       </div>

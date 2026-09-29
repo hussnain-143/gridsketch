@@ -403,6 +403,7 @@ export default function EditorPage() {
             setMobileEditTab(tab);
             setMobileEditDrawerOpen(true);
           }}
+          onOpenMenu={() => setMobileMenuDrawerOpen(true)}
         />
       </div>
 
@@ -516,7 +517,8 @@ export default function EditorPage() {
         isOpen={mobileMenuDrawerOpen}
         onClose={() => setMobileMenuDrawerOpen(false)}
         onTriggerUpload={() => {
-          const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+          const fileInput = (document.getElementById('studio-file-input') ||
+            document.querySelector('input[type="file"]')) as HTMLInputElement;
           fileInput?.click();
         }}
         onSelectSample={handleSelectSample}

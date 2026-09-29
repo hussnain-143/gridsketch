@@ -12,6 +12,7 @@ import {
   Layers,
   ChevronDown,
   MoreVertical,
+  Menu,
   X,
   LayoutGrid,
   Columns2,
@@ -90,6 +91,7 @@ export function StudioHeader({
     >
       {/* Hidden File Input for Image Upload */}
       <input
+        id="studio-file-input"
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
@@ -97,15 +99,16 @@ export function StudioHeader({
         onChange={handleFileChange}
       />
 
-      {/* Brand & Mobile Upload Button */}
+      {/* Brand & Mobile Menu Hamburger Button */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Mobile Quick Photo Upload Button */}
+        {/* Mobile Hamburger Menu Drawer Button */}
         <button
-          onClick={() => fileInputRef.current?.click()}
-          className="md:hidden p-2 rounded-xl border bg-[rgba(15,21,36,0.6)] text-[#7dd3fc] border-[rgba(125,211,252,0.2)] hover:bg-[#7dd3fc]/15 transition-all shrink-0"
-          title="Upload Photo"
+          onClick={onOpenMobileDrawer}
+          className="md:hidden p-2 rounded-xl border bg-[rgba(15,21,36,0.6)] text-[#7dd3fc] border-[rgba(125,211,252,0.25)] hover:bg-[#7dd3fc]/15 active:scale-95 transition-all shrink-0 flex items-center justify-center"
+          title="Open Menu"
+          aria-label="Open Menu"
         >
-          <Upload className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </button>
 
         <BrandLogo size="sm" />
@@ -124,7 +127,7 @@ export function StudioHeader({
       </div>
 
       {/* Middle Tools (Desktop & Tablet) — Pure Icon Buttons */}
-      <div className="hidden sm:flex items-center gap-1.5">
+      <div className="hidden md:flex items-center gap-1.5">
         {/* Sample Switcher (Icon Only) */}
         <button
           onClick={() => setSampleMenuOpen((prev) => !prev)}
@@ -185,7 +188,7 @@ export function StudioHeader({
       <div className="flex items-center gap-1.5 sm:gap-2">
         {/* Glacier Glass Segmented Layout Selector (Icons Only) */}
         {onSelectLayout && (
-          <div className="hidden sm:flex items-center bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.12)] rounded-xl p-0.5 shadow-sm">
+          <div className="hidden md:flex items-center bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.12)] rounded-xl p-0.5 shadow-sm">
             <button
               onClick={() => onSelectLayout('bento')}
               className={`p-2 rounded-lg transition-all ${
@@ -238,7 +241,7 @@ export function StudioHeader({
         {/* Print Button (Icon Only) */}
         <button
           onClick={onOpenPrint}
-          className="hidden sm:flex p-2 rounded-xl bg-[rgba(15,21,36,0.6)] hover:bg-[#7dd3fc]/15 border border-[rgba(125,211,252,0.14)] hover:border-[#7dd3fc]/40 text-[#7dd3fc] transition-all"
+          className="hidden md:flex p-2 rounded-xl bg-[rgba(15,21,36,0.6)] hover:bg-[#7dd3fc]/15 border border-[rgba(125,211,252,0.14)] hover:border-[#7dd3fc]/40 text-[#7dd3fc] transition-all"
           title="Print Reference"
         >
           <Printer className="w-4 h-4" />
@@ -247,8 +250,9 @@ export function StudioHeader({
         {/* Mobile Menu Drawer Button (Opens slide-out MobileMenuDrawer) */}
         <button
           onClick={onOpenMobileDrawer}
-          className="sm:hidden p-2 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.18)] hover:border-[#7dd3fc]/50 text-[#7dd3fc] active:scale-95 transition-all"
+          className="md:hidden p-2 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.18)] hover:border-[#7dd3fc]/50 text-[#7dd3fc] active:scale-95 transition-all"
           title="Open Menu Drawer"
+          aria-label="Open Menu Drawer"
         >
           <MoreVertical className="w-4 h-4" />
         </button>

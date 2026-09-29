@@ -52,16 +52,16 @@ export function MobileMenuDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end no-print animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex justify-end no-print">
       {/* Dimmed Blurred Backdrop */}
       <div
-        className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm z-0"
         onClick={onClose}
       />
 
       {/* Slide-in Drawer Container */}
       <div
-        className="relative w-[85vw] max-w-[340px] h-full flex flex-col z-10 select-none shadow-2xl transition-transform duration-300 ease-out animate-in slide-in-from-right"
+        className="relative w-[85vw] max-w-[340px] h-full flex flex-col z-10 select-none shadow-2xl ml-auto"
         style={{
           background: 'linear-gradient(180deg, rgba(15, 21, 36, 0.96) 0%, rgba(10, 14, 26, 0.98) 100%)',
           backdropFilter: 'blur(32px) saturate(200%)',
