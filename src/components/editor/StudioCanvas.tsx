@@ -162,12 +162,28 @@ export function StudioCanvas({
     setOffset({ x: centerX, y: centerY });
   }, [processedCanvas, pageDims]);
 
-  // Initial fit when processed canvas becomes available
+  // Stable tracker to prevent resetting viewport when user moves image or changes edit properties
+  const hasFittedRef = useRef<boolean>(false);
+  const prevPaperLayoutRef = useRef<string>('');
+  const prevImageDimRef = useRef<string>('');
+
   useEffect(() => {
-    if (processedCanvas) {
+    if (!processedCanvas) return;
+
+    const currentDim = `${processedCanvas.width}x${processedCanvas.height}`;
+    const currentPaper = `${paper?.preset || 'none'}-${paper?.orientation || 'portrait'}-${showPage}`;
+
+    const isInitial = !hasFittedRef.current;
+    const isNewImageDim = prevImageDimRef.current !== '' && prevImageDimRef.current !== currentDim;
+    const isPaperLayoutChange = prevPaperLayoutRef.current !== '' && prevPaperLayoutRef.current !== currentPaper;
+
+    if (isInitial || isNewImageDim || isPaperLayoutChange) {
       handleFitToScreen();
+      hasFittedRef.current = true;
+      prevImageDimRef.current = currentDim;
+      prevPaperLayoutRef.current = currentPaper;
     }
-  }, [processedCanvas, handleFitToScreen]);
+  }, [processedCanvas?.width, processedCanvas?.height, paper?.preset, paper?.orientation, showPage, handleFitToScreen]);
 
   // Keyboard shortcut listener (Space for Pan tool)
   useEffect(() => {

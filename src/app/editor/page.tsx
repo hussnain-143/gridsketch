@@ -32,6 +32,7 @@ const DEFAULT_GRID: GridConfig = {
   labelSize: 14,
   showCenterLines: true,
   showDiagonals: false,
+  showFullDiagonals: false,
   subdivisions: 1,
   lockAspectRatio: true,
 };
@@ -371,40 +372,42 @@ export default function EditorPage() {
         </div>
 
         {/* Mobile Interactive Bottom Sheet Edit Drawer */}
-        <MobileEditDrawer
-          grid={grid}
-          onGridChange={(updates) => {
-            setGrid((prev) => ({ ...prev, ...updates }));
-            pushHistoryDebounced();
-          }}
-          paper={paper}
-          onPaperChange={(updates) => {
-            setPaper((prev) => ({ ...prev, ...updates }));
-            pushHistoryDebounced();
-          }}
-          mode={mode}
-          onModeChange={(newMode) => {
-            setMode(newMode);
-            pushHistory();
-          }}
-          transform={transform}
-          onTransformChange={(updates) => {
-            setTransform((prev) => ({ ...prev, ...updates }));
-            pushHistoryDebounced();
-          }}
-          imageWidth={processedCanvas?.width || loadedImage?.naturalWidth || 800}
-          imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 800}
-          isMovingImage={isMovingImage}
-          onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
-          isOpen={mobileEditDrawerOpen}
-          onToggleOpen={() => setMobileEditDrawerOpen((prev) => !prev)}
-          activeTab={mobileEditTab}
-          onSelectTab={(tab) => {
-            setMobileEditTab(tab);
-            setMobileEditDrawerOpen(true);
-          }}
-          onOpenMenu={() => setMobileMenuDrawerOpen(true)}
-        />
+        {!mobileMenuDrawerOpen && (
+          <MobileEditDrawer
+            grid={grid}
+            onGridChange={(updates) => {
+              setGrid((prev) => ({ ...prev, ...updates }));
+              pushHistoryDebounced();
+            }}
+            paper={paper}
+            onPaperChange={(updates) => {
+              setPaper((prev) => ({ ...prev, ...updates }));
+              pushHistoryDebounced();
+            }}
+            mode={mode}
+            onModeChange={(newMode) => {
+              setMode(newMode);
+              pushHistory();
+            }}
+            transform={transform}
+            onTransformChange={(updates) => {
+              setTransform((prev) => ({ ...prev, ...updates }));
+              pushHistoryDebounced();
+            }}
+            imageWidth={processedCanvas?.width || loadedImage?.naturalWidth || 800}
+            imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 800}
+            isMovingImage={isMovingImage}
+            onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
+            isOpen={mobileEditDrawerOpen}
+            onToggleOpen={() => setMobileEditDrawerOpen((prev) => !prev)}
+            activeTab={mobileEditTab}
+            onSelectTab={(tab) => {
+              setMobileEditTab(tab);
+              setMobileEditDrawerOpen(true);
+            }}
+            onOpenMenu={() => setMobileMenuDrawerOpen(true)}
+          />
+        )}
       </div>
 
       {/* 2. Desktop Studio Viewport (hidden md:flex) */}

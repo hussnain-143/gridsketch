@@ -73,7 +73,11 @@ export function MobileEditDrawer({
   ];
 
   return (
-    <div className="md:hidden no-print fixed inset-x-0 bottom-0 z-40 flex flex-col pointer-events-none">
+    <div
+      className={`md:hidden no-print fixed inset-x-0 bottom-0 z-40 flex flex-col pointer-events-none transition-all duration-300 ease-in-out ${
+        isMovingImage ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+      }`}
+    >
       {/* Drawer Overlay Container (pointer-events-auto) */}
       <div
         className={`w-full pointer-events-auto transition-all duration-300 ease-in-out flex flex-col shadow-2xl ${
@@ -120,18 +124,8 @@ export function MobileEditDrawer({
                 })}
               </div>
 
-              {/* Action Buttons: Menu & Minimize */}
+              {/* Action Buttons: Minimize Drawer */}
               <div className="flex items-center gap-1 shrink-0">
-                {onOpenMenu && (
-                  <button
-                    onClick={onOpenMenu}
-                    className="p-1.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.15)] text-[#7dd3fc] hover:bg-[#7dd3fc]/15 active:scale-95 transition-all"
-                    title="Open Studio Menu"
-                    aria-label="Open Studio Menu"
-                  >
-                    <Menu className="w-4 h-4" />
-                  </button>
-                )}
                 <button
                   onClick={onToggleOpen}
                   className="p-1.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.15)] text-[#7dd3fc] hover:bg-[#7dd3fc]/15 active:scale-95 transition-all"
@@ -146,7 +140,7 @@ export function MobileEditDrawer({
 
         {/* Scrollable Tool Panel Content (when drawer is open) */}
         {isOpen ? (
-          <div className="flex-1 overflow-y-auto p-3.5 pb-[max(env(safe-area-inset-bottom),24px)] no-scrollbar">
+          <div className="flex-1 overflow-y-auto p-3.5 pb-[max(calc(env(safe-area-inset-bottom)+36px),56px)] no-scrollbar">
             {activeTab === 'grid' && (
               <GridBlueprintBentoCard
                 grid={grid}

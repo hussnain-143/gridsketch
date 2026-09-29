@@ -23,6 +23,10 @@ import {
   Sun,
   Palette,
   FileSpreadsheet,
+  Compass,
+  Crosshair,
+  Slash,
+  Maximize2,
 } from 'lucide-react';
 import { RangeSlider } from '@/components/editor/common/RangeSlider';
 import { SegmentedControl } from '@/components/editor/common/SegmentedControl';
@@ -160,30 +164,9 @@ export function GridBlueprintBentoCard({
         const paperW = scaleAnalysis.paperWidthMm;
         const paperH = scaleAnalysis.paperHeightMm;
 
-        const baseCols = Math.max(1, Math.min(60, Math.round(paperW / targetMm)));
-        const candidates = [baseCols - 1, baseCols, baseCols + 1].filter((c) => c >= 1 && c <= 60);
-
-        let bestCols = baseCols;
-        let bestRows = Math.max(1, Math.min(60, Math.round(paperH / targetMm)));
-        let minScore = Infinity;
-
-        for (const c of candidates) {
-          const actualCellMm = paperW / c;
-          const r = Math.max(1, Math.min(60, Math.round(paperH / actualCellMm)));
-          const actualCellHMm = paperH / r;
-          const diffW = Math.abs(actualCellMm - targetMm);
-          const diffH = Math.abs(actualCellHMm - targetMm);
-          const score = diffW * 2 + diffH;
-
-          if (score < minScore) {
-            minScore = score;
-            bestCols = c;
-            bestRows = r;
-          }
-        }
-
-        newCols = bestCols;
-        newRows = bestRows;
+        // Directly compute integer columns and rows matching the target physical pitch
+        newCols = Math.max(1, Math.min(60, Math.round(paperW / targetMm)));
+        newRows = Math.max(1, Math.min(60, Math.round(paperH / targetMm)));
       }
     }
 
@@ -193,6 +176,7 @@ export function GridBlueprintBentoCard({
       cellSize: validSize,
       sizeUnit: unit,
       gridMode: 'size',
+      lockAspectRatio: true,
     });
   };
 
@@ -424,29 +408,153 @@ export function GridBlueprintBentoCard({
               <div className="flex items-center justify-between text-[#94a3b8]">
                 <span className="flex items-center gap-1.5 text-[#7dd3fc]" title="Resulting Grid Matrix">
                   <Grid3X3 className="w-3.5 h-3.5" />
+                  <span className="font-semibold text-[#f0f6fc]">Grid Matrix</span>
                 </span>
                 <strong className="text-[#7dd3fc] font-mono text-xs font-bold">
-                  {grid.columns} × {grid.rows} ({grid.columns * grid.rows})
+                  {grid.columns} × {grid.rows} ({grid.columns * grid.rows} cells)
                 </strong>
               </div>
 
               <div className="flex items-center justify-between text-[#94a3b8] text-[10px]">
                 <span className="flex items-center gap-1.5 text-[#7dd3fc]" title="Physical Size on Paper">
                   <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Physical Pitch</span>
                 </span>
-                <span className="font-mono text-[#f0f6fc]">
-                  {scaleAnalysis.cellWidthMm.toFixed(1)} × {scaleAnalysis.cellHeightMm.toFixed(1)} mm
+                <span className="font-mono text-[#f0f6fc] font-semibold bg-[#7dd3fc]/15 px-2 py-0.5 rounded-md border border-[#7dd3fc]/30">
+                  {targetCellSize} × {targetCellSize} {sizeUnit} · 1:1 Square
                 </span>
               </div>
 
-              <div className="text-[10px] text-[#7dd3fc] pt-1.5 border-t border-[rgba(125,211,252,0.1)] flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-[#7dd3fc] shrink-0" />
-                <span>Rule lines every {targetCellSize} {sizeUnit}</span>
+              <div className="text-[10px] text-[#7dd3fc] pt-1.5 border-t border-[rgba(125,211,252,0.1)] flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-[#7dd3fc] shrink-0" />
+                  <span>Rule lines every {targetCellSize} {sizeUnit}</span>
+                </span>
+                <span className="font-mono text-[9px] text-[#94a3b8]">{safePaper.preset} ({safePaper.orientation})</span>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Guides, Diagonals & Crosshairs */}
+      <div className="space-y-2.5 p-3.5 rounded-xl bg-[rgba(10,14,26,0.65)] backdrop-blur-xl border border-[rgba(125,211,252,0.14)] border-t-[rgba(255,255,255,0.15)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_20px_rgba(0,0,0,0.25)]">
+        <div className="flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1.5 text-[#7dd3fc] font-semibold text-[11px] uppercase tracking-wider">
+            <Compass className="w-3.5 h-3.5 text-[#7dd3fc]" />
+            <span>Guides & Diagonals</span>
+          </span>
+          <span className="text-[10px] text-[#94a3b8] font-mono">
+            {grid.showDiagonals ? 'Cell Diagonals' : grid.showFullDiagonals ? 'Full Diagonals' : 'Clean'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          {/* Diagonal Cross (X in Each Square) */}
+          <button
+            type="button"
+            onClick={() => onChange({ showDiagonals: !grid.showDiagonals })}
+            className={`flex items-center justify-between p-2.5 rounded-xl border transition-all text-left ${
+              grid.showDiagonals
+                ? 'bg-[#7dd3fc]/20 border-[#7dd3fc]/50 text-[#f0f6fc] shadow-[0_0_12px_rgba(125,211,252,0.2)]'
+                : 'bg-[rgba(15,21,36,0.6)] border-[rgba(125,211,252,0.12)] text-[#94a3b8] hover:text-[#f0f6fc]'
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Grid3X3 className="w-3.5 h-3.5 text-[#7dd3fc] shrink-0" />
+              <div className="truncate">
+                <div className="text-xs font-semibold leading-tight">Cell Diagonals</div>
+                <div className="text-[9px] text-[#94a3b8] leading-tight">X in every square</div>
+              </div>
+            </div>
+            <div
+              className={`w-3.5 h-3.5 rounded-full border transition-colors shrink-0 ml-1 flex items-center justify-center ${
+                grid.showDiagonals
+                  ? 'bg-[#7dd3fc] border-[#7dd3fc]'
+                  : 'border-[rgba(125,211,252,0.3)] bg-transparent'
+              }`}
+            >
+              {grid.showDiagonals && <div className="w-1.5 h-1.5 rounded-full bg-[#0a0e1a]" />}
+            </div>
+          </button>
+
+          {/* Full Canvas Diagonals (Corner-to-Corner) */}
+          <button
+            type="button"
+            onClick={() => onChange({ showFullDiagonals: !grid.showFullDiagonals })}
+            className={`flex items-center justify-between p-2.5 rounded-xl border transition-all text-left ${
+              grid.showFullDiagonals
+                ? 'bg-[#7dd3fc]/20 border-[#7dd3fc]/50 text-[#f0f6fc] shadow-[0_0_12px_rgba(125,211,252,0.2)]'
+                : 'bg-[rgba(15,21,36,0.6)] border-[rgba(125,211,252,0.12)] text-[#94a3b8] hover:text-[#f0f6fc]'
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Slash className="w-3.5 h-3.5 text-[#7dd3fc] shrink-0" />
+              <div className="truncate">
+                <div className="text-xs font-semibold leading-tight">Full Diagonals</div>
+                <div className="text-[9px] text-[#94a3b8] leading-tight">Corner-to-corner X</div>
+              </div>
+            </div>
+            <div
+              className={`w-3.5 h-3.5 rounded-full border transition-colors shrink-0 ml-1 flex items-center justify-center ${
+                grid.showFullDiagonals
+                  ? 'bg-[#7dd3fc] border-[#7dd3fc]'
+                  : 'border-[rgba(125,211,252,0.3)] bg-transparent'
+              }`}
+            >
+              {grid.showFullDiagonals && <div className="w-1.5 h-1.5 rounded-full bg-[#0a0e1a]" />}
+            </div>
+          </button>
+        </div>
+
+        {/* Center Crosshairs & Subdivisions in a Dual Row */}
+        <div className="grid grid-cols-2 gap-1.5 pt-1">
+          {/* Center Crosshairs */}
+          <button
+            type="button"
+            onClick={() => onChange({ showCenterLines: !grid.showCenterLines })}
+            className={`flex items-center justify-between p-2 rounded-xl border transition-all text-left ${
+              grid.showCenterLines
+                ? 'bg-rose-500/15 border-rose-500/40 text-rose-200'
+                : 'bg-[rgba(15,21,36,0.6)] border-[rgba(125,211,252,0.12)] text-[#94a3b8] hover:text-[#f0f6fc]'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Crosshair className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span className="text-xs font-semibold truncate">Center Cross</span>
+            </div>
+            <div
+              className={`w-3 h-3 rounded-full border transition-colors shrink-0 ${
+                grid.showCenterLines ? 'bg-rose-400 border-rose-400' : 'border-[rgba(125,211,252,0.3)]'
+              }`}
+            />
+          </button>
+
+          {/* Subdivisions / Light Lines */}
+          <div className="p-1 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.12)] flex items-center justify-between gap-1">
+            <span className="text-[10px] text-[#94a3b8] pl-1 font-mono truncate">Subdivide:</span>
+            <div className="flex items-center gap-0.5 shrink-0">
+              {([1, 2, 4] as (1 | 2 | 4)[]).map((sub) => {
+                const active = (grid.subdivisions || 1) === sub;
+                return (
+                  <button
+                    key={sub}
+                    type="button"
+                    onClick={() => onChange({ subdivisions: sub })}
+                    className={`py-0.5 px-1.5 rounded-md text-[10px] font-mono transition-all ${
+                      active
+                        ? 'bg-[#7dd3fc] text-[#0a0e1a] font-bold shadow-[0_0_8px_rgba(125,211,252,0.3)]'
+                        : 'text-[#94a3b8] hover:text-[#f0f6fc]'
+                    }`}
+                  >
+                    {sub === 1 ? 'Off' : `${sub}×`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Line Thickness & Opacity (Shared) with Pure Icon Sliders */}
       <div className="space-y-3 p-3.5 rounded-xl bg-[rgba(10,14,26,0.65)] backdrop-blur-xl border border-[rgba(125,211,252,0.14)] border-t-[rgba(255,255,255,0.15)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_20px_rgba(0,0,0,0.25)]">

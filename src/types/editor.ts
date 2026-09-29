@@ -16,6 +16,7 @@ export interface GridConfig {
   labelSize: number; // 10 to 32 px
   showCenterLines: boolean;
   showDiagonals: boolean;
+  showFullDiagonals?: boolean;
   subdivisions: number; // 1 (none), 2 (half-cells), 4 (quarter-cells)
   lockAspectRatio: boolean;
   gridMode?: GridSizeMode;

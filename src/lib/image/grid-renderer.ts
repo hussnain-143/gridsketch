@@ -35,13 +35,26 @@ export function drawGridOverlay(
     labelSize,
     showCenterLines,
     showDiagonals,
+    showFullDiagonals,
     subdivisions,
+    lockAspectRatio,
   } = grid;
 
   if (rows <= 0 || columns <= 0 || opacity <= 0) return;
 
-  const cellWidth = width / columns;
-  const cellHeight = height / rows;
+  // When lockAspectRatio is enabled, guarantee perfect 1:1 square cells
+  let cellWidth = width / columns;
+  let cellHeight = height / rows;
+  let startX = 0;
+  let startY = 0;
+
+  if (lockAspectRatio) {
+    const cellSize = Math.min(width / columns, height / rows);
+    cellWidth = cellSize;
+    cellHeight = cellSize;
+    startX = (width - columns * cellWidth) / 2;
+    startY = (height - rows * cellHeight) / 2;
+  }
 
   ctx.save();
   ctx.globalAlpha = opacity;
@@ -56,35 +69,47 @@ export function drawGridOverlay(
     ctx.setLineDash([4, 4]);
 
     ctx.beginPath();
-    for (let c = 0; c < columns * subdivisions; c++) {
+    for (let c = 0; c <= columns * subdivisions; c++) {
       if (c % subdivisions !== 0) {
-        const x = Math.round(c * subColWidth);
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
+        const x = Math.round(startX + c * subColWidth);
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, startY + rows * cellHeight);
       }
     }
-    for (let r = 0; r < rows * subdivisions; r++) {
+    for (let r = 0; r <= rows * subdivisions; r++) {
       if (r % subdivisions !== 0) {
-        const y = Math.round(r * subRowHeight);
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        const y = Math.round(startY + r * subRowHeight);
+        ctx.moveTo(startX, y);
+        ctx.lineTo(startX + columns * cellWidth, y);
       }
     }
     ctx.stroke();
     ctx.setLineDash([]); // Reset dash
   }
 
-  // 2. Draw Diagonal Cross in Each Grid Cell (X in every square)
+  // 2. Draw Full Canvas Diagonals (Corner-to-Corner X across entire canvas)
+  if (showFullDiagonals) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, thickness * 0.75);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(width, height);
+    ctx.moveTo(width, 0);
+    ctx.lineTo(0, height);
+    ctx.stroke();
+  }
+
+  // 3. Draw Diagonal Cross in Each Grid Cell (X in every square)
   if (showDiagonals) {
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(0.75, thickness * 0.5);
     ctx.beginPath();
     for (let r = 0; r < rows; r++) {
-      const y1 = r * cellHeight;
-      const y2 = (r + 1) * cellHeight;
+      const y1 = startY + r * cellHeight;
+      const y2 = startY + (r + 1) * cellHeight;
       for (let c = 0; c < columns; c++) {
-        const x1 = c * cellWidth;
-        const x2 = (c + 1) * cellWidth;
+        const x1 = startX + c * cellWidth;
+        const x2 = startX + (c + 1) * cellWidth;
         // Corner to corner diagonals within each individual cell
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
@@ -95,26 +120,26 @@ export function drawGridOverlay(
     ctx.stroke();
   }
 
-  // 3. Draw Major Grid Lines
+  // 4. Draw Major Grid Lines
   ctx.strokeStyle = color;
   ctx.lineWidth = thickness;
 
   ctx.beginPath();
   // Vertical lines
   for (let c = 0; c <= columns; c++) {
-    const x = Math.round(c * cellWidth);
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
+    const x = Math.round(startX + c * cellWidth);
+    ctx.moveTo(x, startY);
+    ctx.lineTo(x, startY + rows * cellHeight);
   }
   // Horizontal lines
   for (let r = 0; r <= rows; r++) {
-    const y = Math.round(r * cellHeight);
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
+    const y = Math.round(startY + r * cellHeight);
+    ctx.moveTo(startX, y);
+    ctx.lineTo(startX + columns * cellWidth, y);
   }
   ctx.stroke();
 
-  // 4. Center Crosshair Lines (High visibility)
+  // 5. Center Crosshair Lines (High visibility)
   if (showCenterLines) {
     ctx.strokeStyle = '#ef4444'; // Studio crimson accent
     ctx.lineWidth = Math.max(1.5, thickness * 1.3);
@@ -152,8 +177,8 @@ export function drawGridOverlay(
       const textWidth = textMetrics.width;
       const textHeight = computedFontSize;
 
-      const badgeX = c * cellWidth + cellWidth / 2;
-      const badgeY = Math.min(height - textHeight / 2 - 4, Math.max(textHeight / 2 + 4, cellHeight * 0.15));
+      const badgeX = startX + c * cellWidth + cellWidth / 2;
+      const badgeY = Math.min(height - textHeight / 2 - 4, Math.max(textHeight / 2 + 4, startY + cellHeight * 0.15));
 
       // Draw dark semi-transparent pill for crystal clarity against any background
       ctx.fillStyle = 'rgba(15, 17, 23, 0.75)';
@@ -179,8 +204,8 @@ export function drawGridOverlay(
       const textWidth = textMetrics.width;
       const textHeight = computedFontSize;
 
-      const badgeX = Math.min(width - textWidth / 2 - 4, Math.max(textWidth / 2 + 4, cellWidth * 0.12));
-      const badgeY = r * cellHeight + cellHeight / 2;
+      const badgeX = Math.min(width - textWidth / 2 - 4, Math.max(textWidth / 2 + 4, startX + cellWidth * 0.12));
+      const badgeY = startY + r * cellHeight + cellHeight / 2;
 
       // Dark pill
       ctx.fillStyle = 'rgba(15, 17, 23, 0.75)';

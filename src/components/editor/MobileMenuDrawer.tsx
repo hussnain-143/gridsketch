@@ -121,7 +121,7 @@ export function MobileMenuDrawer({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 no-scrollbar">
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-12 space-y-5 no-scrollbar">
           {/* Quick Primary Actions */}
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -274,8 +274,8 @@ export function MobileMenuDrawer({
           </div>
         </div>
 
-        {/* Drawer Footer with Safe-Area Clearance */}
-        <div className="pb-[max(env(safe-area-inset-bottom),20px)] pt-2 px-4 border-t border-[rgba(125,211,252,0.1)] bg-[rgba(10,14,26,0.8)] text-center shrink-0">
+        {/* Drawer Footer with Generous Safe-Area Clearance */}
+        <div className="pb-[max(calc(env(safe-area-inset-bottom)+20px),36px)] pt-3 px-4 border-t border-[rgba(125,211,252,0.1)] bg-[rgba(10,14,26,0.8)] text-center shrink-0">
           <span className="text-[9px] font-mono tracking-widest text-[#7dd3fc]/60 uppercase">
             Glacier Edition · Atelier Calibrated
           </span>
