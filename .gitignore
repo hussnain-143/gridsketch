@@ -63,7 +63,7 @@ next-env.d.ts
 *.apk
 *.aab
 *.ap_
-GridSketch.apk
+!GridSketch.apk
 
 # Android Build Artifacts & Local Configs
 android/.gradle/

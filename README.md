@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.3-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Capacitor](https://img.shields.io/badge/Capacitor-8.5-blue?style=flat-square&logo=capacitor)](https://capacitorjs.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Android](https://img.shields.io/badge/Android-APK_Ready-3DDC84?style=flat-square&logo=android)](file:///Users/husnain/Desktop/untitled%20folder/GridSketch.apk)
+[![Android](https://img.shields.io/badge/Android-APK_Download-3DDC84?style=flat-square&logo=android)](https://github.com/hussnain-143/gridsketch/raw/main/GridSketch.apk)
 [![Design](https://img.shields.io/badge/Theme-Glacier_Glassmorphism-7dd3fc?style=flat-square)]()
 
 ---
