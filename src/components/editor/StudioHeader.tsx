@@ -10,7 +10,6 @@ import {
   Download,
   SplitSquareVertical,
   Layers,
-  ChevronDown,
   MoreVertical,
   Menu,
   X,
@@ -41,8 +40,6 @@ interface StudioHeaderProps {
   onOpenExport: () => void;
   layoutMode?: LayoutMode;
   onSelectLayout?: (mode: LayoutMode) => void;
-  mobileSidebarOpen?: boolean;
-  onToggleMobileSidebar?: () => void;
   onOpenMobileDrawer?: () => void;
 }
 
@@ -63,8 +60,6 @@ export function StudioHeader({
   onOpenExport,
   layoutMode = 'bento',
   onSelectLayout,
-  mobileSidebarOpen,
-  onToggleMobileSidebar,
   onOpenMobileDrawer,
 }: StudioHeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);

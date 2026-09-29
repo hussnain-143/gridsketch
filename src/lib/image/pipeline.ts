@@ -89,7 +89,6 @@ function applyFastBoxBlur(
   radius: number
 ): void {
   if (radius <= 0) return;
-  const len = data.length;
   const copy = new Uint8ClampedArray(data);
 
   // Horizontal pass
@@ -207,8 +206,6 @@ export function processImageCanvas(
     saturation,
     sharpness,
     blur,
-    threshold,
-    posterizeLevels,
   } = adjustments;
 
   // Pre-calculate adjustment factors

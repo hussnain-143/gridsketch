@@ -1,13 +1,13 @@
 /**
  * Debounce a function call by delay milliseconds.
  */
-export function debounce<T extends (...args: any[]) => void>(
-  func: T,
+export function debounce<Args extends unknown[]>(
+  func: (...args: Args) => void,
   wait: number
-): ((...args: Parameters<T>) => void) & { cancel: () => void } {
+): ((...args: Args) => void) & { cancel: () => void } {
   let timeout: NodeJS.Timeout | null = null;
 
-  const debounced = (...args: Parameters<T>) => {
+  const debounced = (...args: Args) => {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => {
       func(...args);
@@ -29,13 +29,13 @@ export function debounce<T extends (...args: any[]) => void>(
  * Throttle a function execution to the browser's requestAnimationFrame cycle.
  * Perfect for 60fps/120fps smooth drag, pan, and interactive canvas manipulations.
  */
-export function throttleRaf<T extends (...args: any[]) => void>(
-  func: T
-): ((...args: Parameters<T>) => void) & { cancel: () => void } {
+export function throttleRaf<Args extends unknown[]>(
+  func: (...args: Args) => void
+): ((...args: Args) => void) & { cancel: () => void } {
   let rafId: number | null = null;
-  let latestArgs: Parameters<T> | null = null;
+  let latestArgs: Args | null = null;
 
-  const throttled = (...args: Parameters<T>) => {
+  const throttled = (...args: Args) => {
     latestArgs = args;
     if (rafId === null) {
       rafId = requestAnimationFrame(() => {

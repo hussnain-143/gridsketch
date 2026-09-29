@@ -49,6 +49,7 @@ export function StudioCanvas({
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const [internalMoveImage, setInternalMoveImage] = useState<boolean>(false);
+  const [isDraggingImage, setIsDraggingImage] = useState<boolean>(false);
   const activeMovingImage = isMovingImage ?? internalMoveImage;
   const handleToggleMove = () => {
     if (onToggleMoveImage) {
@@ -183,7 +184,7 @@ export function StudioCanvas({
       prevImageDimRef.current = currentDim;
       prevPaperLayoutRef.current = currentPaper;
     }
-  }, [processedCanvas?.width, processedCanvas?.height, paper?.preset, paper?.orientation, showPage, handleFitToScreen]);
+  }, [processedCanvas, paper?.preset, paper?.orientation, showPage, handleFitToScreen]);
 
   // Keyboard shortcut listener (Space for Pan tool)
   useEffect(() => {
@@ -248,6 +249,7 @@ export function StudioCanvas({
     } else if (e.button === 0 && activeMovingImage && pageDims.showPageFrame) {
       // Direct drag to position image inside page
       isDraggingImageRef.current = true;
+      setIsDraggingImage(true);
       dragImageStartRef.current = {
         clientX: e.clientX,
         clientY: e.clientY,
@@ -283,9 +285,19 @@ export function StudioCanvas({
     if (isDraggingImageRef.current && (throttledPaperChange || onPaperChange)) {
       const dx = (e.clientX - dragImageStartRef.current.clientX) / scale;
       const dy = (e.clientY - dragImageStartRef.current.clientY) / scale;
+      let newOffsetX = Math.round(dragImageStartRef.current.initX + dx);
+      let newOffsetY = Math.round(dragImageStartRef.current.initY + dy);
+
+      if (pageDims.fitMode === 'cover') {
+        const minX = Math.round(pageDims.pageW - pageDims.imgDisplayW);
+        const minY = Math.round(pageDims.pageH - pageDims.imgDisplayH);
+        newOffsetX = Math.min(0, Math.max(minX, newOffsetX));
+        newOffsetY = Math.min(0, Math.max(minY, newOffsetY));
+      }
+
       const updates = {
-        imageOffsetX: Math.round(dragImageStartRef.current.initX + dx),
-        imageOffsetY: Math.round(dragImageStartRef.current.initY + dy),
+        imageOffsetX: newOffsetX,
+        imageOffsetY: newOffsetY,
       };
       if (throttledPaperChange) {
         throttledPaperChange(updates);
@@ -313,6 +325,7 @@ export function StudioCanvas({
     if (e.touches.length === 1) {
       if (activeMovingImage && pageDims.showPageFrame) {
         isDraggingImageRef.current = true;
+        setIsDraggingImage(true);
         dragImageStartRef.current = {
           clientX: e.touches[0].clientX,
           clientY: e.touches[0].clientY,
@@ -327,6 +340,7 @@ export function StudioCanvas({
     } else if (e.touches.length === 2) {
       setIsDragging(false);
       isDraggingImageRef.current = false;
+      setIsDraggingImage(false);
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -344,9 +358,19 @@ export function StudioCanvas({
     if (e.touches.length === 1 && isDraggingImageRef.current && (throttledPaperChange || onPaperChange)) {
       const dx = (e.touches[0].clientX - dragImageStartRef.current.clientX) / scale;
       const dy = (e.touches[0].clientY - dragImageStartRef.current.clientY) / scale;
+      let newOffsetX = Math.round(dragImageStartRef.current.initX + dx);
+      let newOffsetY = Math.round(dragImageStartRef.current.initY + dy);
+
+      if (pageDims.fitMode === 'cover') {
+        const minX = Math.round(pageDims.pageW - pageDims.imgDisplayW);
+        const minY = Math.round(pageDims.pageH - pageDims.imgDisplayH);
+        newOffsetX = Math.min(0, Math.max(minX, newOffsetX));
+        newOffsetY = Math.min(0, Math.max(minY, newOffsetY));
+      }
+
       const updates = {
-        imageOffsetX: Math.round(dragImageStartRef.current.initX + dx),
-        imageOffsetY: Math.round(dragImageStartRef.current.initY + dy),
+        imageOffsetX: newOffsetX,
+        imageOffsetY: newOffsetY,
       };
       if (throttledPaperChange) {
         throttledPaperChange(updates);
@@ -384,6 +408,7 @@ export function StudioCanvas({
   const handleTouchEnd = () => {
     setIsDragging(false);
     isDraggingImageRef.current = false;
+    setIsDraggingImage(false);
     touchStartDist.current = null;
   };
 
@@ -391,6 +416,7 @@ export function StudioCanvas({
     setIsDragging(false);
     setIsDraggingSplit(false);
     isDraggingImageRef.current = false;
+    setIsDraggingImage(false);
   };
 
   // Render image-only onto the main viewport canvas (no grid here)
@@ -477,7 +503,7 @@ export function StudioCanvas({
 
   const isPanningCursor = spacePressed || panToolActive || isDragging;
   const canvasCursor = activeMovingImage
-    ? isDraggingImageRef.current
+    ? isDraggingImage
       ? 'cursor-grabbing'
       : 'cursor-grab'
     : isPanningCursor
@@ -533,7 +559,7 @@ export function StudioCanvas({
             style={{
               transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
               transformOrigin: '0 0',
-              transition: isDragging || isDraggingImageRef.current ? 'none' : 'transform 0.05s ease-out',
+              transition: isDragging || isDraggingImage ? 'none' : 'transform 0.05s ease-out',
               width: pageW,
               height: pageH,
               backgroundColor: showPageFrame && pageDims.backgroundColor !== 'transparent' ? pageDims.backgroundColor : 'transparent',

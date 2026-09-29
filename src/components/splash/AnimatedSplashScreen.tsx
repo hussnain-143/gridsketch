@@ -3,13 +3,10 @@
 import React, { useEffect, useState } from 'react';
 
 export function AnimatedSplashScreen() {
-  const [mounted, setMounted] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-
     // If running inside Capacitor Native, hide native splash smoothly
     const hideNativeSplash = async () => {
       try {
@@ -43,7 +40,7 @@ export function AnimatedSplashScreen() {
     }
   };
 
-  if (!mounted || isDismissed) {
+  if (isDismissed) {
     return null;
   }
 

@@ -3,7 +3,7 @@
 import React from 'react';
 import { FilterMode } from '@/types/editor';
 import { BentoCard } from './BentoCard';
-import { Image as ImageIcon, SunMoon, Contrast, Check } from 'lucide-react';
+import { Image as ImageIcon, SunMoon, Contrast } from 'lucide-react';
 
 interface ModesBentoCardProps {
   currentMode: FilterMode;

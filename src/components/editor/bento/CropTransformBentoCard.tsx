@@ -25,7 +25,7 @@ interface CropTransformBentoCardProps {
   colSpan?: string;
 }
 
-const ASPECT_RATIOS: { id: AspectRatioPreset; label: string; icon: any; ratio?: number }[] = [
+const ASPECT_RATIOS: { id: AspectRatioPreset; label: string; icon: React.ElementType; ratio?: number }[] = [
   { id: 'original', label: 'Original', icon: ImageIcon },
   { id: '1:1', label: '1:1 Square', icon: Square, ratio: 1 },
   { id: '4:3', label: '4:3 Classic', icon: RectangleHorizontal, ratio: 4 / 3 },

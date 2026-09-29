@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   PaperConfig,
   ImageFitMode,
@@ -91,10 +91,6 @@ export function ImageFitBentoCard({
   const currAlignment: ImageAlignment = paper.fitAlignment || 'center';
   const currBgColor = paper.canvasBackground || '#0a0e1a';
   const currGridTarget = paper.gridTarget || (currFitMode === 'cover' ? 'paper' : 'image');
-
-  const [customBgInput, setCustomBgInput] = useState<string>(
-    currBgColor.startsWith('#') ? currBgColor : '#0a0e1a'
-  );
 
   const handleNudge = (dx: number, dy: number) => {
     onChange({

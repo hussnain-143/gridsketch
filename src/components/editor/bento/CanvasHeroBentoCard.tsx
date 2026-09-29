@@ -52,9 +52,9 @@ export function CanvasHeroBentoCard({
 }: CanvasHeroBentoCardProps) {
   return (
     <BentoCard
-      title="Canvas Viewport"
+      title={imageName ? `Canvas Viewport — ${imageName}` : 'Canvas Viewport'}
       icon={FileImage}
-      badge={paper.fitMode ? `${paper.fitMode}` : 'Live'}
+      badge={imageWidth > 0 ? `${imageWidth} × ${imageHeight} px` : (paper.fitMode ? `${paper.fitMode}` : 'Live')}
       colSpan={colSpan}
       className={`min-h-[500px] lg:min-h-[620px] ${className}`}
       action={

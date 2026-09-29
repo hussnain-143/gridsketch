@@ -49,11 +49,21 @@ export function drawGridOverlay(
   let startY = 0;
 
   if (lockAspectRatio) {
-    const cellSize = Math.min(width / columns, height / rows);
-    cellWidth = cellSize;
-    cellHeight = cellSize;
-    startX = (width - columns * cellWidth) / 2;
-    startY = (height - rows * cellHeight) / 2;
+    // If the cell aspect ratio is already close to square (within 6%),
+    // stretch to cover full width/height so no empty slivers or gaps appear on borders
+    const rawRatio = (width / columns) / (height / rows);
+    if (rawRatio >= 0.94 && rawRatio <= 1.06) {
+      cellWidth = width / columns;
+      cellHeight = height / rows;
+      startX = 0;
+      startY = 0;
+    } else {
+      const cellSize = Math.min(width / columns, height / rows);
+      cellWidth = cellSize;
+      cellHeight = cellSize;
+      startX = Math.max(0, (width - columns * cellWidth) / 2);
+      startY = Math.max(0, (height - rows * cellHeight) / 2);
+    }
   }
 
   ctx.save();
@@ -87,15 +97,17 @@ export function drawGridOverlay(
     ctx.setLineDash([]); // Reset dash
   }
 
-  // 2. Draw Full Canvas Diagonals (Corner-to-Corner X across entire canvas)
+  // 2. Draw Full Diagonals (Corner-to-Corner X across the grid area)
   if (showFullDiagonals) {
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(1, thickness * 0.75);
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(width, height);
-    ctx.moveTo(width, 0);
-    ctx.lineTo(0, height);
+    const gridRight = startX + columns * cellWidth;
+    const gridBottom = startY + rows * cellHeight;
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(gridRight, gridBottom);
+    ctx.moveTo(gridRight, startY);
+    ctx.lineTo(startX, gridBottom);
     ctx.stroke();
   }
 

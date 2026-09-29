@@ -6,6 +6,7 @@ import {
   PaperConfig,
   GridSizeMode,
   GridSizeUnit,
+  LabelMode,
 } from '@/types/editor';
 import { BentoCard } from './BentoCard';
 import {
@@ -26,7 +27,6 @@ import {
   Compass,
   Crosshair,
   Slash,
-  Maximize2,
 } from 'lucide-react';
 import { RangeSlider } from '@/components/editor/common/RangeSlider';
 import { SegmentedControl } from '@/components/editor/common/SegmentedControl';
@@ -186,7 +186,9 @@ export function GridBlueprintBentoCard({
 
   const handleColsChange = (cols: number) => {
     if (grid.lockAspectRatio) {
-      onChange({ columns: cols, rows: cols, gridMode: 'number' });
+      const ratio = scaleAnalysis.paperHeightMm / Math.max(1, scaleAnalysis.paperWidthMm);
+      const newRows = Math.max(1, Math.min(60, Math.round(cols * ratio)));
+      onChange({ columns: cols, rows: newRows, gridMode: 'number' });
     } else {
       onChange({ columns: cols, gridMode: 'number' });
     }
@@ -194,7 +196,9 @@ export function GridBlueprintBentoCard({
 
   const handleRowsChange = (rows: number) => {
     if (grid.lockAspectRatio) {
-      onChange({ rows, columns: rows, gridMode: 'number' });
+      const ratio = scaleAnalysis.paperWidthMm / Math.max(1, scaleAnalysis.paperHeightMm);
+      const newCols = Math.max(1, Math.min(60, Math.round(rows * ratio)));
+      onChange({ rows, columns: newCols, gridMode: 'number' });
     } else {
       onChange({ rows, gridMode: 'number' });
     }
@@ -597,7 +601,7 @@ export function GridBlueprintBentoCard({
               { value: 'none', label: 'Labels Off', icon: EyeOff },
             ]}
             value={grid.labelMode}
-            onChange={(val) => onChange({ labelMode: val as any })}
+            onChange={(val) => onChange({ labelMode: val as LabelMode })}
             cols={3}
             iconsOnly={true}
           />

@@ -146,7 +146,7 @@ export function calculatePageFraming(
   const fitMode = paper.fitMode || 'cover';
   const zoom = Math.max(0.1, Math.min(5.0, paper.imageZoom ?? 1.0));
   const alignment = paper.fitAlignment || 'center';
-  const backgroundColor = paper.canvasBackground || '#12151d';
+  const backgroundColor = paper.canvasBackground || '#0a0e1a';
 
   let imgDisplayW: number;
   let imgDisplayH: number;
@@ -154,8 +154,8 @@ export function calculatePageFraming(
   if (fitMode === 'cover') {
     // Fills container completely (may overflow and crop outside page boundary)
     const coverScale = Math.max(pageW / Math.max(1, imgW), pageH / Math.max(1, imgH)) * zoom;
-    imgDisplayW = Math.round(imgW * coverScale);
-    imgDisplayH = Math.round(imgH * coverScale);
+    imgDisplayW = Math.max(pageW, Math.ceil(imgW * coverScale));
+    imgDisplayH = Math.max(pageH, Math.ceil(imgH * coverScale));
   } else if (fitMode === 'contain') {
     // Fits completely inside container with no cropping (letterboxed)
     const containScale = Math.min(pageW / Math.max(1, imgW), pageH / Math.max(1, imgH)) * zoom;
@@ -237,8 +237,23 @@ export function calculatePageFraming(
   const userPanX = paper.imageOffsetX ?? 0;
   const userPanY = paper.imageOffsetY ?? 0;
 
-  const imgOffsetX = Math.round(baseOffsetX + userPanX);
-  const imgOffsetY = Math.round(baseOffsetY + userPanY);
+  let imgOffsetX = Math.round(baseOffsetX + userPanX);
+  let imgOffsetY = Math.round(baseOffsetY + userPanY);
+
+  if (fitMode === 'cover') {
+    // In cover mode, the image must completely cover the paper canvas:
+    // Left edge (imgOffsetX) cannot exceed 0 (no left gap).
+    // Right edge (imgOffsetX + imgDisplayW) cannot be less than pageW (no right gap).
+    const minX = pageW - imgDisplayW;
+    const maxX = 0;
+    imgOffsetX = Math.min(maxX, Math.max(minX, imgOffsetX));
+
+    // Top edge (imgOffsetY) cannot exceed 0 (no top gap).
+    // Bottom edge (imgOffsetY + imgDisplayH) cannot be less than pageH (no bottom gap).
+    const minY = pageH - imgDisplayH;
+    const maxY = 0;
+    imgOffsetY = Math.min(maxY, Math.max(minY, imgOffsetY));
+  }
 
   return {
     pageW,

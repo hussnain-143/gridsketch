@@ -69,8 +69,8 @@ const DEFAULT_PAPER: PaperConfig = {
   fitCustomUnit: 'px',
   fitLockAspect: false,
   fitAlignment: 'center',
-  canvasBackground: '#12151d',
-  gridTarget: 'image',
+  canvasBackground: '#0a0e1a',
+  gridTarget: 'paper',
 };
 
 export default function EditorPage() {
@@ -89,10 +89,21 @@ export default function EditorPage() {
 
   // UI State
   const [showCompare, setShowCompare] = useState<boolean>(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [mobileMenuDrawerOpen, setMobileMenuDrawerOpen] = useState<boolean>(false);
   const [mobileEditDrawerOpen, setMobileEditDrawerOpen] = useState<boolean>(false);
   const [mobileEditTab, setMobileEditTab] = useState<MobileEditTab>('grid');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+    }, 3200);
+  }, []);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isPrintOpen, setIsPrintOpen] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -105,12 +116,22 @@ export default function EditorPage() {
   const isHistoryAction = useRef<boolean>(false);
 
   // Rendered Canvases
-  const [rawTransformedCanvas, setRawTransformedCanvas] = useState<HTMLCanvasElement | null>(null);
+  const rawTransformedCanvas = useMemo(() => {
+    if (!loadedImage) return null;
+    try {
+      return applyTransforms(loadedImage, transform);
+    } catch (err) {
+      console.error('Error applying geometric transform:', err);
+      return null;
+    }
+  }, [loadedImage, transform]);
   const [processedCanvas, setProcessedCanvas] = useState<HTMLCanvasElement | null>(null);
 
   // Latest state reference for stable history pushes without re-renders
   const stateRef = useRef({ grid, mode, transform, paper, historyIndex });
-  stateRef.current = { grid, mode, transform, paper, historyIndex };
+  useEffect(() => {
+    stateRef.current = { grid, mode, transform, paper, historyIndex };
+  }, [grid, mode, transform, paper, historyIndex]);
 
   // Record History State
   const pushHistory = useCallback(() => {
@@ -134,11 +155,20 @@ export default function EditorPage() {
     setHistoryIndex((prev) => prev + 1);
   }, []);
 
+  const debouncedHistoryRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    debouncedHistoryRef.current = debounce(() => {
+      pushHistory();
+    }, 350);
+    return () => {
+      debouncedHistoryRef.current = null;
+    };
+  }, [pushHistory]);
+
   // Debounced history for sliders and drags
-  const pushHistoryDebounced = useMemo(
-    () => debounce(pushHistory, 350),
-    [pushHistory]
-  );
+  const pushHistoryDebounced = useCallback(() => {
+    debouncedHistoryRef.current?.();
+  }, []);
 
   // Load initial sample image or uploaded image from landing page / URL
   useEffect(() => {
@@ -242,17 +272,28 @@ export default function EditorPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Upload handler
+  // Upload handler with validation and error protection
   const handleUploadImage = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (PNG, JPG, WebP).', 'error');
+      return;
+    }
     const reader = new FileReader();
+    reader.onerror = () => {
+      showToast('Could not read image file. Please try another.', 'error');
+    };
     reader.onload = (e) => {
       const result = e.target?.result as string;
       const img = new Image();
+      img.onerror = () => {
+        showToast('Failed to decode image data.', 'error');
+      };
       img.onload = () => {
         setLoadedImage(img);
         setImageName(file.name.replace(/\.[^/.]+$/, ''));
         setTransform(DEFAULT_TRANSFORM);
         pushHistory();
+        showToast(`Loaded ${file.name}`, 'success');
       };
       img.src = result;
     };
@@ -270,6 +311,7 @@ export default function EditorPage() {
       setImageName(sample.title);
       setTransform(DEFAULT_TRANSFORM);
       pushHistory();
+      showToast(`Loaded reference: ${sample.title}`, 'info');
     };
     img.src = sample.dataUrl;
   };
@@ -281,41 +323,39 @@ export default function EditorPage() {
     setTransform(DEFAULT_TRANSFORM);
     setPaper(DEFAULT_PAPER);
     pushHistory();
+    showToast('Studio settings reset to defaults', 'info');
   };
 
-  // Step 1: Geometric Transform Pipeline
-  useEffect(() => {
-    if (!loadedImage) return;
-
-    try {
-      const transformed = applyTransforms(loadedImage, transform);
-      setRawTransformedCanvas(transformed);
-    } catch (err) {
-      console.error('Error applying geometric transform:', err);
-    }
-  }, [loadedImage, transform]);
-
-  // Step 2: Pixel Processing Pipeline
+  // Pixel Processing Pipeline
   useEffect(() => {
     if (!rawTransformedCanvas) return;
 
-    setIsProcessing(true);
+    let canceled = false;
     const timer = setTimeout(() => {
+      if (canceled) return;
+      setIsProcessing(true);
       try {
         const outCanvas = processImageCanvas(
           rawTransformedCanvas,
           mode,
           BASE_ADJUSTMENTS
         );
-        setProcessedCanvas(outCanvas);
+        if (!canceled) {
+          setProcessedCanvas(outCanvas);
+        }
       } catch (err) {
         console.error('Error in pixel processing pipeline:', err);
       } finally {
-        setIsProcessing(false);
+        if (!canceled) {
+          setIsProcessing(false);
+        }
       }
     }, 10);
 
-    return () => clearTimeout(timer);
+    return () => {
+      canceled = true;
+      clearTimeout(timer);
+    };
   }, [rawTransformedCanvas, mode]);
 
   const currentFilterTitle =
@@ -345,10 +385,25 @@ export default function EditorPage() {
         onOpenExport={() => setIsExportOpen(true)}
         layoutMode={layoutMode}
         onSelectLayout={(mode) => setLayoutMode(mode)}
-        mobileSidebarOpen={mobileSidebarOpen}
-        onToggleMobileSidebar={() => setMobileSidebarOpen((prev) => !prev)}
         onOpenMobileDrawer={() => setMobileMenuDrawerOpen(true)}
       />
+
+      {/* Floating Toast Notification HUD */}
+      {toast && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className={`fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-xs font-medium shadow-2xl flex items-center gap-2 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none ${
+            toast.type === 'error'
+              ? 'bg-[#ef4444]/20 border-[#ef4444]/40 text-[#fca5a5] shadow-[0_0_20px_rgba(239,68,68,0.2)]'
+              : toast.type === 'success'
+              ? 'bg-[#10b981]/20 border-[#10b981]/40 text-[#6ee7b7] shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+              : 'bg-[#0f172a]/90 border-[rgba(125,211,252,0.3)] text-[#7dd3fc] shadow-[0_0_20px_rgba(125,211,252,0.2)]'
+          }`}
+        >
+          <span>{toast.message}</span>
+        </aside>
+      )}
 
       {/* 1. Mobile Fixed-Canvas Layout with Bottom Edit Sheet Drawer (md:hidden) */}
       <div className="md:hidden flex-1 relative flex flex-col overflow-hidden">
@@ -485,7 +540,7 @@ export default function EditorPage() {
                 imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 800}
                 isMovingImage={isMovingImage}
                 onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
-                onCloseMobileDrawer={() => setMobileSidebarOpen(false)}
+                onCloseMobileDrawer={() => setLayoutMode('bento')}
                 onOpenPrint={() => setIsPrintOpen(true)}
                 onOpenExport={() => setIsExportOpen(true)}
                 showCompare={showCompare}
