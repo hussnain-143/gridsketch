@@ -16,14 +16,10 @@ import { StudioHeader, LayoutMode } from '@/components/editor/StudioHeader';
 import { StudioCanvas } from '@/components/editor/StudioCanvas';
 import { BentoWorkbench } from '@/components/editor/bento/BentoWorkbench';
 import { BentoGridDashboard } from '@/components/editor/bento/BentoGridDashboard';
+import { MobileMenuDrawer } from '@/components/editor/MobileMenuDrawer';
+import { MobileEditDrawer, MobileEditTab } from '@/components/editor/MobileEditDrawer';
 import { ExportModal } from '@/components/editor/ExportModal';
 import { PrintModal } from '@/components/editor/PrintModal';
-import {
-  LayoutGrid,
-  Scaling,
-  Grid3X3,
-  SunMoon,
-} from 'lucide-react';
 
 const DEFAULT_GRID: GridConfig = {
   rows: 8,
@@ -93,6 +89,9 @@ export default function EditorPage() {
   // UI State
   const [showCompare, setShowCompare] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
+  const [mobileMenuDrawerOpen, setMobileMenuDrawerOpen] = useState<boolean>(false);
+  const [mobileEditDrawerOpen, setMobileEditDrawerOpen] = useState<boolean>(false);
+  const [mobileEditTab, setMobileEditTab] = useState<MobileEditTab>('grid');
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isPrintOpen, setIsPrintOpen] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -347,14 +346,32 @@ export default function EditorPage() {
         onSelectLayout={(mode) => setLayoutMode(mode)}
         mobileSidebarOpen={mobileSidebarOpen}
         onToggleMobileSidebar={() => setMobileSidebarOpen((prev) => !prev)}
+        onOpenMobileDrawer={() => setMobileMenuDrawerOpen(true)}
       />
 
-      {/* Main Studio Viewport */}
-      {layoutMode === 'bento' ? (
-        /* Structural Bento Grid Dashboard: Asymmetric Multi-Column Content Cards */
-        <BentoGridDashboard
-          processedCanvas={processedCanvas}
-          rawImageCanvas={rawTransformedCanvas}
+      {/* 1. Mobile Fixed-Canvas Layout with Bottom Edit Sheet Drawer (md:hidden) */}
+      <div className="md:hidden flex-1 relative flex flex-col overflow-hidden">
+        {/* Full-bleed Fixed Canvas Viewport */}
+        <div className="flex-1 w-full h-full relative overflow-hidden">
+          <StudioCanvas
+            processedCanvas={processedCanvas}
+            rawImageCanvas={rawTransformedCanvas}
+            grid={grid}
+            showCompare={showCompare}
+            isProcessing={isProcessing}
+            paper={paper}
+            showPage={showPage}
+            onToggleShowPage={() => setShowPage((prev) => !prev)}
+            isMovingImage={isMovingImage}
+            onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
+            onPaperChange={(updates) => {
+              setPaper((prev) => ({ ...prev, ...updates }));
+            }}
+          />
+        </div>
+
+        {/* Mobile Interactive Bottom Sheet Edit Drawer */}
+        <MobileEditDrawer
           grid={grid}
           onGridChange={(updates) => {
             setGrid((prev) => ({ ...prev, ...updates }));
@@ -375,116 +392,145 @@ export default function EditorPage() {
             setTransform((prev) => ({ ...prev, ...updates }));
             pushHistoryDebounced();
           }}
-          imageName={imageName}
           imageWidth={processedCanvas?.width || loadedImage?.naturalWidth || 800}
           imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 800}
-          showCompare={showCompare}
-          onToggleCompare={() => setShowCompare((prev) => !prev)}
-          isProcessing={isProcessing}
-          showPage={showPage}
-          onToggleShowPage={() => setShowPage((prev) => !prev)}
           isMovingImage={isMovingImage}
           onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
-          onOpenPrint={() => setIsPrintOpen(true)}
-          onOpenExport={() => setIsExportOpen(true)}
-          onExpandFocus={() => setLayoutMode('focus')}
+          isOpen={mobileEditDrawerOpen}
+          onToggleOpen={() => setMobileEditDrawerOpen((prev) => !prev)}
+          activeTab={mobileEditTab}
+          onSelectTab={(tab) => {
+            setMobileEditTab(tab);
+            setMobileEditDrawerOpen(true);
+          }}
         />
-      ) : (
-        /* Studio Split & Zen Focus Layouts */
-        <div className="flex-1 flex overflow-hidden relative">
-          {/* Mobile Backdrop */}
-          {mobileSidebarOpen && (
-            <div
-              onClick={() => setMobileSidebarOpen(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-xs z-30 md:hidden animate-in fade-in duration-150"
-            />
-          )}
+      </div>
 
-          {/* Bento Workbench Sidebar (Desktop: Docked Bento Cards, Mobile: Drawer) */}
-          <aside
-            className={`no-print flex flex-col bg-[rgba(15,21,36,0.75)] backdrop-blur-2xl border-r border-[rgba(125,211,252,0.1)] z-40 shrink-0 transition-all duration-300 ease-in-out
-              fixed md:static inset-x-0 bottom-0 top-auto md:top-0 md:bottom-0 md:left-0
-              ${layoutMode === 'split' ? 'md:w-96 lg:w-[440px]' : 'md:hidden'}
-              max-h-[80dvh] md:max-h-none rounded-t-2xl md:rounded-none shadow-2xl md:shadow-none border-t border-[rgba(125,211,252,0.15)] md:border-t-0
-              ${mobileSidebarOpen ? 'translate-y-0 md:translate-x-0' : 'translate-y-full md:translate-y-0'}
-            `}
-          >
-            <BentoWorkbench
-              grid={grid}
-              onGridChange={(updates) => {
-                setGrid((prev) => ({ ...prev, ...updates }));
-                pushHistoryDebounced();
-              }}
-              paper={paper}
-              onPaperChange={(updates) => {
-                setPaper((prev) => ({ ...prev, ...updates }));
-                pushHistoryDebounced();
-              }}
-              mode={mode}
-              onModeChange={(newMode) => {
-                setMode(newMode);
-                pushHistory();
-              }}
-              transform={transform}
-              onTransformChange={(updates) => {
-                setTransform((prev) => ({ ...prev, ...updates }));
-                pushHistoryDebounced();
-              }}
-              imageWidth={processedCanvas?.width || loadedImage?.naturalWidth || 800}
-              imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 800}
-              isMovingImage={isMovingImage}
-              onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
-              onCloseMobileDrawer={() => setMobileSidebarOpen(false)}
-              onOpenPrint={() => setIsPrintOpen(true)}
-              onOpenExport={() => setIsExportOpen(true)}
-              showCompare={showCompare}
-              onToggleCompare={() => setShowCompare((prev) => !prev)}
-            />
-          </aside>
+      {/* 2. Desktop Studio Viewport (hidden md:flex) */}
+      <div className="hidden md:flex flex-1 overflow-hidden relative">
+        {layoutMode === 'bento' ? (
+          /* Structural Bento Grid Dashboard: Asymmetric Multi-Column Content Cards */
+          <BentoGridDashboard
+            processedCanvas={processedCanvas}
+            rawImageCanvas={rawTransformedCanvas}
+            grid={grid}
+            onGridChange={(updates) => {
+              setGrid((prev) => ({ ...prev, ...updates }));
+              pushHistoryDebounced();
+            }}
+            paper={paper}
+            onPaperChange={(updates) => {
+              setPaper((prev) => ({ ...prev, ...updates }));
+              pushHistoryDebounced();
+            }}
+            mode={mode}
+            onModeChange={(newMode) => {
+              setMode(newMode);
+              pushHistory();
+            }}
+            transform={transform}
+            onTransformChange={(updates) => {
+              setTransform((prev) => ({ ...prev, ...updates }));
+              pushHistoryDebounced();
+            }}
+            imageName={imageName}
+            imageWidth={processedCanvas?.width || loadedImage?.naturalWidth || 800}
+            imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 800}
+            showCompare={showCompare}
+            onToggleCompare={() => setShowCompare((prev) => !prev)}
+            isProcessing={isProcessing}
+            showPage={showPage}
+            onToggleShowPage={() => setShowPage((prev) => !prev)}
+            isMovingImage={isMovingImage}
+            onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
+            onOpenPrint={() => setIsPrintOpen(true)}
+            onOpenExport={() => setIsExportOpen(true)}
+            onExpandFocus={() => setLayoutMode('focus')}
+          />
+        ) : (
+          /* Studio Split & Zen Focus Layouts */
+          <div className="flex-1 flex overflow-hidden relative">
+            {/* Bento Workbench Sidebar */}
+            <aside
+              className={`no-print flex flex-col bg-[rgba(15,21,36,0.75)] backdrop-blur-2xl border-r border-[rgba(125,211,252,0.1)] z-40 shrink-0 transition-all duration-300 ease-in-out
+                ${layoutMode === 'split' ? 'md:w-96 lg:w-[440px]' : 'hidden'}
+              `}
+            >
+              <BentoWorkbench
+                grid={grid}
+                onGridChange={(updates) => {
+                  setGrid((prev) => ({ ...prev, ...updates }));
+                  pushHistoryDebounced();
+                }}
+                paper={paper}
+                onPaperChange={(updates) => {
+                  setPaper((prev) => ({ ...prev, ...updates }));
+                  pushHistoryDebounced();
+                }}
+                mode={mode}
+                onModeChange={(newMode) => {
+                  setMode(newMode);
+                  pushHistory();
+                }}
+                transform={transform}
+                onTransformChange={(updates) => {
+                  setTransform((prev) => ({ ...prev, ...updates }));
+                  pushHistoryDebounced();
+                }}
+                imageWidth={processedCanvas?.width || loadedImage?.naturalWidth || 800}
+                imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 800}
+                isMovingImage={isMovingImage}
+                onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
+                onCloseMobileDrawer={() => setMobileSidebarOpen(false)}
+                onOpenPrint={() => setIsPrintOpen(true)}
+                onOpenExport={() => setIsExportOpen(true)}
+                showCompare={showCompare}
+                onToggleCompare={() => setShowCompare((prev) => !prev)}
+              />
+            </aside>
 
-          {/* Center Canvas Viewport */}
-          <main className="flex-1 h-full relative overflow-hidden flex flex-col">
-            <StudioCanvas
-              processedCanvas={processedCanvas}
-              rawImageCanvas={rawTransformedCanvas}
-              grid={grid}
-              showCompare={showCompare}
-              isProcessing={isProcessing}
-              paper={paper}
-              showPage={showPage}
-              onToggleShowPage={() => setShowPage((prev) => !prev)}
-              isMovingImage={isMovingImage}
-              onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
-              onPaperChange={(updates) => {
-                setPaper((prev) => ({ ...prev, ...updates }));
-              }}
-            />
-          </main>
-        </div>
-      )}
+            {/* Center Canvas Viewport */}
+            <main className="flex-1 h-full relative overflow-hidden flex flex-col">
+              <StudioCanvas
+                processedCanvas={processedCanvas}
+                rawImageCanvas={rawTransformedCanvas}
+                grid={grid}
+                showCompare={showCompare}
+                isProcessing={isProcessing}
+                paper={paper}
+                showPage={showPage}
+                onToggleShowPage={() => setShowPage((prev) => !prev)}
+                isMovingImage={isMovingImage}
+                onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
+                onPaperChange={(updates) => {
+                  setPaper((prev) => ({ ...prev, ...updates }));
+                }}
+              />
+            </main>
+          </div>
+        )}
+      </div>
 
-      {/* Mobile Bottom Navigation Bar in Glacier Glass */}
-      <nav className="md:hidden no-print bg-[rgba(10,14,26,0.85)] backdrop-blur-2xl border-t border-[rgba(125,211,252,0.12)] px-2 py-1.5 flex items-center justify-around z-30 shrink-0 pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]">
-        {[
-          { label: 'Bento Cards', icon: LayoutGrid },
-          { label: 'Image Fit', icon: Scaling },
-          { label: 'Grid', icon: Grid3X3 },
-          { label: 'Modes', icon: SunMoon },
-        ].map((item) => (
-          <button
-            key={item.label}
-            onClick={() => setMobileSidebarOpen((prev) => !prev)}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all ${
-              mobileSidebarOpen
-                ? 'text-[#7dd3fc] bg-[#7dd3fc]/15 font-semibold shadow-xs'
-                : 'text-[#94a3b8] hover:text-[#f0f6fc]'
-            }`}
-          >
-            <item.icon className="w-4 h-4 text-[#7dd3fc]" />
-            <span className="truncate">{item.label}</span>
-          </button>
-        ))}
-      </nav>
+      {/* Slide-out Mobile Navigation Drawer */}
+      <MobileMenuDrawer
+        isOpen={mobileMenuDrawerOpen}
+        onClose={() => setMobileMenuDrawerOpen(false)}
+        onTriggerUpload={() => {
+          const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+          fileInput?.click();
+        }}
+        onSelectSample={handleSelectSample}
+        currentImageName={imageName}
+        onResetAll={handleResetAll}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onOpenPrint={() => setIsPrintOpen(true)}
+        onOpenExport={() => setIsExportOpen(true)}
+        showCompare={showCompare}
+        onToggleCompare={() => setShowCompare((prev) => !prev)}
+      />
 
       {/* Export Modal */}
       <ExportModal

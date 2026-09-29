@@ -492,12 +492,12 @@ export function StudioCanvas({
 
       {/* Floating Move Image Active Banner */}
       {pageDims.showPageFrame && activeMovingImage && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-2 rounded-full bg-[rgba(15,21,36,0.85)] backdrop-blur-2xl border border-[rgba(125,211,252,0.4)] text-xs text-[#bae6fd] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_24px_rgba(125,211,252,0.2)] animate-in fade-in">
-          <Move className="w-4 h-4 text-[#7dd3fc] animate-pulse" />
-          <span>Move Image: Click & drag to frame your subject inside {paper?.preset}</span>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(15,21,36,0.92)] backdrop-blur-2xl border border-[rgba(125,211,252,0.4)] text-[11px] text-[#bae6fd] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_24px_rgba(125,211,252,0.2)] animate-in fade-in max-w-[92vw]">
+          <Move className="w-3.5 h-3.5 text-[#7dd3fc] animate-pulse shrink-0" />
+          <span className="truncate">Drag photo to frame inside {paper?.preset}</span>
           <button
             onClick={handleToggleMove}
-            className="ml-1 px-3 py-1 rounded-full bg-[#7dd3fc] hover:bg-[#bae6fd] text-[#0a0e1a] font-bold text-[11px] transition-colors shadow-[0_0_15px_rgba(125,211,252,0.4)]"
+            className="ml-1 px-2.5 py-0.5 rounded-full bg-[#7dd3fc] hover:bg-[#bae6fd] text-[#0a0e1a] font-bold text-[10px] transition-colors shrink-0 shadow-[0_0_15px_rgba(125,211,252,0.4)]"
           >
             Done
           </button>

@@ -6,8 +6,8 @@ import { calculatePaperGridScale } from '@/lib/image/paper-calculator';
 import { BentoCard } from './BentoCard';
 import {
   Ruler,
-  Smartphone,
-  Tablet,
+  RectangleVertical,
+  RectangleHorizontal,
   FileText,
   RotateCw,
   FileSpreadsheet,
@@ -65,20 +65,20 @@ export function PaperRulerBentoCard({
         />
       </div>
 
-      {/* Orientation Selector (Icons Only) */}
+      {/* Orientation Selector */}
       <div>
         <div className="flex items-center mb-1.5 text-[#7dd3fc]" title="Paper Orientation">
           <RotateCw className="w-3.5 h-3.5" />
         </div>
         <SegmentedControl
           options={[
-            { value: 'portrait', label: 'Portrait', icon: Smartphone },
-            { value: 'landscape', label: 'Landscape', icon: Tablet },
+            { value: 'portrait', label: 'Portrait', icon: RectangleVertical },
+            { value: 'landscape', label: 'Landscape', icon: RectangleHorizontal },
           ]}
           value={paper.orientation}
           onChange={(orient) => onChange({ orientation: orient as PaperOrientation })}
           cols={2}
-          iconsOnly={true}
+          iconsOnly={false}
         />
       </div>
 

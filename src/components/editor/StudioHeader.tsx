@@ -42,6 +42,7 @@ interface StudioHeaderProps {
   onSelectLayout?: (mode: LayoutMode) => void;
   mobileSidebarOpen?: boolean;
   onToggleMobileSidebar?: () => void;
+  onOpenMobileDrawer?: () => void;
 }
 
 export function StudioHeader({
@@ -63,10 +64,10 @@ export function StudioHeader({
   onSelectLayout,
   mobileSidebarOpen,
   onToggleMobileSidebar,
+  onOpenMobileDrawer,
 }: StudioHeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,7 +79,7 @@ export function StudioHeader({
 
   return (
     <header
-      className="no-print pt-[env(safe-area-inset-top,0px)] min-h-14 px-3 sm:px-5 flex items-center justify-between select-none z-30 shrink-0 relative"
+      className="no-print pt-[max(env(safe-area-inset-top),20px)] min-h-[58px] px-3 sm:px-5 flex items-center justify-between select-none z-30 shrink-0 relative"
       style={{
         background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 0%, rgba(15, 21, 36, 0.75) 40%, rgba(10, 14, 26, 0.85) 100%)',
         backdropFilter: 'blur(28px) saturate(200%)',
@@ -243,101 +244,14 @@ export function StudioHeader({
           <Printer className="w-4 h-4" />
         </button>
 
-        {/* Mobile More Options Dropdown */}
-        <div className="relative sm:hidden">
-          <button
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-            className="p-2 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.15)] text-[#f0f6fc]"
-            title="More actions"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-
-          {mobileMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs"
-                onClick={() => setMobileMenuOpen(false)}
-              />
-              <div
-                className="absolute right-0 mt-2 w-52 rounded-2xl py-2 z-50 text-xs shadow-2xl"
-                style={{
-                  background: 'rgba(15, 21, 36, 0.95)',
-                  backdropFilter: 'blur(24px)',
-                  border: '1px solid rgba(125, 211, 252, 0.2)',
-                  boxShadow: '0 0 30px rgba(125, 211, 252, 0.1)',
-                }}
-              >
-                <button
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-3.5 py-2 text-left hover:bg-[#7dd3fc]/15 flex items-center gap-2 text-[#f0f6fc]"
-                >
-                  <Upload className="w-3.5 h-3.5 text-[#7dd3fc]" />
-                  <span>Upload Photo</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setSampleMenuOpen(true);
-                  }}
-                  className="w-full px-3.5 py-2 text-left hover:bg-[#7dd3fc]/15 flex items-center gap-2 text-[#f0f6fc]"
-                >
-                  <Layers className="w-3.5 h-3.5 text-[#c8a0f0]" />
-                  <span>Reference Samples</span>
-                </button>
-                <button
-                  onClick={() => {
-                    onOpenPrint();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-3.5 py-2 text-left hover:bg-[#7dd3fc]/15 flex items-center gap-2 text-[#f0f6fc]"
-                >
-                  <Printer className="w-3.5 h-3.5 text-[#7dd3fc]" />
-                  <span>Print Reference</span>
-                </button>
-                <div className="my-1 border-t border-[rgba(125,211,252,0.1)]" />
-                <div className="flex items-center justify-around px-3 py-1.5">
-                  <button
-                    onClick={() => {
-                      onUndo();
-                      setMobileMenuOpen(false);
-                    }}
-                    disabled={!canUndo}
-                    className={`flex items-center gap-1 text-xs ${canUndo ? 'text-[#f0f6fc]' : 'text-slate-600'}`}
-                  >
-                    <Undo2 className="w-3.5 h-3.5" />
-                    <span>Undo</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      onRedo();
-                      setMobileMenuOpen(false);
-                    }}
-                    disabled={!canRedo}
-                    className={`flex items-center gap-1 text-xs ${canRedo ? 'text-[#f0f6fc]' : 'text-slate-600'}`}
-                  >
-                    <Redo2 className="w-3.5 h-3.5" />
-                    <span>Redo</span>
-                  </button>
-                </div>
-                <div className="my-1 border-t border-[rgba(125,211,252,0.1)]" />
-                <button
-                  onClick={() => {
-                    onResetAll();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-3.5 py-2 text-left hover:bg-[#7dd3fc]/15 flex items-center gap-2 text-[#94a3b8]"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset All</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        {/* Mobile Menu Drawer Button (Opens slide-out MobileMenuDrawer) */}
+        <button
+          onClick={onOpenMobileDrawer}
+          className="sm:hidden p-2 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.18)] hover:border-[#7dd3fc]/50 text-[#7dd3fc] active:scale-95 transition-all"
+          title="Open Menu Drawer"
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
 
         {/* Primary Action Button: Semi-transparent Primary Fill with Border */}
         {/* Primary Action Button: Export (Icon Only) */}
