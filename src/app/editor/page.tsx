@@ -516,6 +516,7 @@ export default function EditorPage() {
       <MobileMenuDrawer
         isOpen={mobileMenuDrawerOpen}
         onClose={() => setMobileMenuDrawerOpen(false)}
+        onUploadImage={handleUploadImage}
         onTriggerUpload={() => {
           const fileInput = (document.getElementById('studio-file-input') ||
             document.querySelector('input[type="file"]')) as HTMLInputElement;

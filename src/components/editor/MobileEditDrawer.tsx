@@ -204,10 +204,13 @@ export function MobileEditDrawer({
                 <button
                   key={tab.id}
                   onClick={() => {
-                    onSelectTab(tab.id);
-                    if (!isOpen) onToggleOpen();
+                    if (isOpen && activeTab === tab.id) {
+                      onToggleOpen();
+                    } else {
+                      onSelectTab(tab.id);
+                    }
                   }}
-                  className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#7dd3fc] active:scale-95"
+                  className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#7dd3fc] active:scale-95 touch-manipulation"
                 >
                   <div className="p-1.5 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.1)] group-hover:border-[#7dd3fc]/30">
                     <Icon className="w-4 h-4 text-[#7dd3fc]" />
@@ -220,7 +223,7 @@ export function MobileEditDrawer({
             {onOpenMenu && (
               <button
                 onClick={onOpenMenu}
-                className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#7dd3fc] active:scale-95"
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#7dd3fc] active:scale-95 touch-manipulation"
                 title="Studio Menu"
                 aria-label="Studio Menu"
               >

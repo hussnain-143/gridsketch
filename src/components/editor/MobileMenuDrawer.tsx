@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   X,
   Upload,
@@ -20,6 +20,7 @@ interface MobileMenuDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onTriggerUpload: () => void;
+  onUploadImage?: (file: File) => void;
   onSelectSample: (id: string) => void;
   currentImageName?: string;
   onResetAll: () => void;
@@ -37,6 +38,7 @@ export function MobileMenuDrawer({
   isOpen,
   onClose,
   onTriggerUpload,
+  onUploadImage,
   onSelectSample,
   currentImageName,
   onResetAll,
@@ -49,19 +51,52 @@ export function MobileMenuDrawer({
   showCompare,
   onToggleCompare,
 }: MobileMenuDrawerProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (onUploadImage) {
+        onUploadImage(file);
+      } else {
+        onTriggerUpload();
+      }
+      e.target.value = '';
+      onClose();
+    }
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end no-print">
-      {/* Dimmed Blurred Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm z-0"
-        onClick={onClose}
+      {/* Hidden Dedicated File Input for Native Mobile Chooser */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
       />
 
-      {/* Slide-in Drawer Container */}
+      {/* Dimmed Blurred Backdrop with smooth fade */}
       <div
-        className="relative w-[85vw] max-w-[340px] h-full flex flex-col z-10 select-none shadow-2xl ml-auto"
+        role="button"
+        tabIndex={0}
+        aria-label="Close menu backdrop"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm z-0 cursor-pointer touch-manipulation animate-backdrop-fade"
+        onClick={handleBackdropClick}
+        onTouchEnd={handleBackdropClick}
+      />
+
+      {/* Slide-in Drawer Container with smooth slide */}
+      <div
+        className="relative w-[85vw] max-w-[340px] h-full flex flex-col z-10 select-none shadow-2xl ml-auto animate-drawer-slide-in"
         style={{
           background: 'linear-gradient(180deg, rgba(15, 21, 36, 0.96) 0%, rgba(10, 14, 26, 0.98) 100%)',
           backdropFilter: 'blur(32px) saturate(200%)',
@@ -76,8 +111,9 @@ export function MobileMenuDrawer({
             <BrandLogo size="sm" />
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-[#94a3b8] hover:text-[#f0f6fc] hover:bg-[#7dd3fc]/15 transition-all"
+            className="p-2 rounded-xl text-[#94a3b8] hover:text-[#f0f6fc] hover:bg-[#7dd3fc]/15 transition-all touch-manipulation cursor-pointer"
             title="Close Menu"
           >
             <X className="w-5 h-5 text-[#7dd3fc]" />
@@ -89,22 +125,28 @@ export function MobileMenuDrawer({
           {/* Quick Primary Actions */}
           <div className="grid grid-cols-2 gap-2">
             <button
+              type="button"
               onClick={() => {
-                onTriggerUpload();
-                onClose();
+                if (fileInputRef.current) {
+                  fileInputRef.current.click();
+                } else {
+                  onTriggerUpload();
+                  onClose();
+                }
               }}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#7dd3fc]/15 border border-[#7dd3fc]/30 text-[#7dd3fc] font-semibold text-xs active:scale-95 transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#7dd3fc]/15 border border-[#7dd3fc]/30 text-[#7dd3fc] font-semibold text-xs active:scale-95 transition-all touch-manipulation cursor-pointer"
             >
               <Upload className="w-4 h-4" />
               <span>Upload Photo</span>
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 onOpenExport();
                 onClose();
               }}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#7dd3fc] text-[#0a0e1a] font-bold text-xs shadow-[0_0_15px_rgba(125,211,252,0.35)] active:scale-95 transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#7dd3fc] text-[#0a0e1a] font-bold text-xs shadow-[0_0_15px_rgba(125,211,252,0.35)] active:scale-95 transition-all touch-manipulation cursor-pointer"
             >
               <Download className="w-4 h-4 stroke-[2.5]" />
               <span>Export</span>
@@ -118,11 +160,12 @@ export function MobileMenuDrawer({
             </span>
             <div className="grid grid-cols-3 gap-1.5">
               <button
+                type="button"
                 onClick={onUndo}
                 disabled={!canUndo}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all ${
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation ${
                   canUndo
-                    ? 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#f0f6fc] hover:bg-[#7dd3fc]/15'
+                    ? 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#f0f6fc] hover:bg-[#7dd3fc]/15 cursor-pointer active:scale-95'
                     : 'bg-transparent border-transparent text-slate-600 cursor-not-allowed'
                 }`}
               >
@@ -131,11 +174,12 @@ export function MobileMenuDrawer({
               </button>
 
               <button
+                type="button"
                 onClick={onRedo}
                 disabled={!canRedo}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all ${
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation ${
                   canRedo
-                    ? 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#f0f6fc] hover:bg-[#7dd3fc]/15'
+                    ? 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#f0f6fc] hover:bg-[#7dd3fc]/15 cursor-pointer active:scale-95'
                     : 'bg-transparent border-transparent text-slate-600 cursor-not-allowed'
                 }`}
               >
@@ -144,8 +188,9 @@ export function MobileMenuDrawer({
               </button>
 
               <button
+                type="button"
                 onClick={onToggleCompare}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all ${
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation cursor-pointer active:scale-95 ${
                   showCompare
                     ? 'bg-[#7dd3fc]/20 border-[#7dd3fc]/50 text-[#7dd3fc]'
                     : 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#94a3b8]'
@@ -173,11 +218,12 @@ export function MobileMenuDrawer({
                 return (
                   <button
                     key={sample.id}
+                    type="button"
                     onClick={() => {
                       onSelectSample(sample.id);
                       onClose();
                     }}
-                    className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                    className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all touch-manipulation cursor-pointer active:scale-[0.98] ${
                       isActive
                         ? 'bg-[#7dd3fc]/20 border-[#7dd3fc]/50 text-[#f0f6fc] shadow-[0_0_15px_rgba(125,211,252,0.15)]'
                         : 'bg-[rgba(15,21,36,0.6)] border-[rgba(125,211,252,0.1)] text-[#94a3b8] hover:bg-[#7dd3fc]/10 hover:text-[#f0f6fc]'
@@ -203,22 +249,24 @@ export function MobileMenuDrawer({
           {/* Output & Utilities */}
           <div className="space-y-1.5 pt-2 border-t border-[rgba(125,211,252,0.1)]">
             <button
+              type="button"
               onClick={() => {
                 onOpenPrint();
                 onClose();
               }}
-              className="w-full p-2.5 rounded-xl bg-[rgba(15,21,36,0.6)] hover:bg-[#7dd3fc]/10 border border-[rgba(125,211,252,0.12)] text-[#f0f6fc] text-xs flex items-center gap-2.5 transition-all"
+              className="w-full p-2.5 rounded-xl bg-[rgba(15,21,36,0.6)] hover:bg-[#7dd3fc]/10 border border-[rgba(125,211,252,0.12)] text-[#f0f6fc] text-xs flex items-center gap-2.5 transition-all touch-manipulation cursor-pointer active:scale-[0.98]"
             >
               <Printer className="w-4 h-4 text-[#7dd3fc]" />
               <span>Print Scale Reference Sheet</span>
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 onResetAll();
                 onClose();
               }}
-              className="w-full p-2.5 rounded-xl bg-[rgba(15,21,36,0.4)] hover:bg-rose-500/15 border border-[rgba(125,211,252,0.1)] hover:border-rose-500/30 text-[#94a3b8] hover:text-rose-300 text-xs flex items-center gap-2.5 transition-all"
+              className="w-full p-2.5 rounded-xl bg-[rgba(15,21,36,0.4)] hover:bg-rose-500/15 border border-[rgba(125,211,252,0.1)] hover:border-rose-500/30 text-[#94a3b8] hover:text-rose-300 text-xs flex items-center gap-2.5 transition-all touch-manipulation cursor-pointer active:scale-[0.98]"
             >
               <RotateCcw className="w-4 h-4 text-rose-400" />
               <span>Reset All Studio Settings</span>
