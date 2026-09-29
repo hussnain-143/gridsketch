@@ -298,9 +298,20 @@ export function processImageCanvas(
       break;
 
     case 'grayscale': {
+      // Perceptually calibrated sRGB grayscale LUT with lifted midtone clarity
+      // Prevents facial planes from collapsing into muddy gray sludge
+      const grayLut = new Uint8Array(256);
+      for (let v = 0; v < 256; v++) {
+        const norm = v / 255;
+        // Mild tone curve adjustment to open up delicate shadow details
+        const adjusted = Math.pow(norm, 0.95);
+        grayLut[v] = Math.min(255, Math.max(0, Math.round(adjusted * 255)));
+      }
+
       for (let i = 0; i < data.length; i += 4) {
-        const gray =
-          0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        const rawGray =
+          (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) | 0;
+        const gray = grayLut[rawGray];
         data[i] = gray;
         data[i + 1] = gray;
         data[i + 2] = gray;
@@ -309,7 +320,7 @@ export function processImageCanvas(
     }
 
     case 'high_contrast': {
-      // S-curve contrast enhancement using fast precomputed 256-byte LUT
+      // Chiaroscuro S-curve contrast enhancement using fast precomputed 256-byte LUT
       const lut = new Uint8Array(256);
       for (let v = 0; v < 256; v++) {
         const norm = v / 255;
@@ -323,6 +334,48 @@ export function processImageCanvas(
         data[i] = finalVal;
         data[i + 1] = finalVal;
         data[i + 2] = finalVal;
+      }
+      break;
+    }
+
+    case 'value_study': {
+      // 5-Step Academic Value Scale (Highlight, Light Halftone, Dark Halftone, Shadow, Core Black)
+      // Teaches students the Munsell/Reilly plane shading masses
+      const valueLut = new Uint8Array(256);
+      for (let v = 0; v < 256; v++) {
+        if (v < 50) {
+          valueLut[v] = 20; // Core Black
+        } else if (v < 100) {
+          valueLut[v] = 75; // Form Shadow
+        } else if (v < 160) {
+          valueLut[v] = 135; // Dark Halftone
+        } else if (v < 215) {
+          valueLut[v] = 195; // Light Halftone
+        } else {
+          valueLut[v] = 250; // Highlight
+        }
+      }
+
+      for (let i = 0; i < data.length; i += 4) {
+        const rawGray =
+          (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) | 0;
+        const val = valueLut[rawGray];
+        data[i] = val;
+        data[i + 1] = val;
+        data[i + 2] = val;
+      }
+      break;
+    }
+
+    case 'notan': {
+      // 2-Tone Notan Graphic Study (Pure Light vs Shadow Masses)
+      for (let i = 0; i < data.length; i += 4) {
+        const rawGray =
+          (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) | 0;
+        const val = rawGray >= 128 ? 250 : 25;
+        data[i] = val;
+        data[i + 1] = val;
+        data[i + 2] = val;
       }
       break;
     }

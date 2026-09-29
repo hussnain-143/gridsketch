@@ -363,7 +363,11 @@ export default function EditorPage() {
       ? 'Original Photo'
       : mode === 'grayscale'
       ? 'Grayscale'
-      : 'High Contrast';
+      : mode === 'value_study'
+      ? '5-Step Value Study'
+      : mode === 'notan'
+      ? '2-Tone Notan'
+      : 'Chiaroscuro';
 
   return (
     <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-[#0a0e1a] text-[#f0f6fc]">
@@ -598,6 +602,7 @@ export default function EditorPage() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         processedCanvas={processedCanvas}
+        rawImageCanvas={rawTransformedCanvas}
         imageName={imageName}
         grid={grid}
         paper={paper}
@@ -609,6 +614,8 @@ export default function EditorPage() {
         isOpen={isPrintOpen}
         onClose={() => setIsPrintOpen(false)}
         processedCanvas={processedCanvas}
+        rawImageCanvas={rawTransformedCanvas}
+        imageName={imageName}
         grid={grid}
         paper={paper}
       />

@@ -1,5 +1,11 @@
-import { ExportConfig, GridConfig, PaperConfig } from '@/types/editor';
-import { drawGridOverlay, drawGridOverlayOnRect } from './grid-renderer';
+import { ExportConfig, GridConfig, PaperConfig, PosterSplitConfig } from '@/types/editor';
+import {
+  drawGridOverlay,
+  drawGridOverlayOnRect,
+  drawPhysicalRulerMargins,
+  drawDraftersSpecLegend,
+  DrafterSpecParams,
+} from './grid-renderer';
 import { calculatePaperGridScale, calculatePageFraming } from './paper-calculator';
 import confetti from 'canvas-confetti';
 import { Capacitor } from '@capacitor/core';
@@ -7,17 +13,43 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 
 /**
- * Creates a high-resolution export canvas with the processed image,
- * optional grid overlay, optional labels, and optional metadata footer banner.
+ * Creates a high-resolution export canvas with support for:
+ * 1. Standard Reference (image + grid)
+ * 2. Matching Blank Grid Sheet (skipping manual ruler drawing)
+ * 3. Side-by-Side Dual Reference (oil painters & portrait colorists)
+ * 4. Physical Ruler Margins (direct wooden ruler verification)
+ * 5. Drafter's Spec Legend (margin footer title block)
  */
 export function createExportCanvas(
   processedCanvas: HTMLCanvasElement,
   grid: GridConfig,
   exportConfig: ExportConfig,
   paper: PaperConfig,
-  filterName: string
+  filterName: string,
+  rawImageCanvas?: HTMLCanvasElement | null
 ): HTMLCanvasElement {
-  const { includeGrid, includeLabels, includeScaleWatermark } = exportConfig;
+  const {
+    exportMode = 'standard',
+    includeGrid = true,
+    includeLabels = true,
+    includeScaleWatermark = true,
+    includeRulerMargins = false,
+    includeDrafterLegend = false,
+  } = exportConfig;
+
+  // 1. If Side-by-Side Dual Export is requested
+  if (exportMode === 'side_by_side') {
+    return createSideBySideCanvas(
+      rawImageCanvas || processedCanvas,
+      processedCanvas,
+      grid,
+      exportConfig,
+      paper,
+      filterName
+    );
+  }
+
+  const isBlankGrid = exportMode === 'blank_grid';
   const isPage = paper && paper.preset !== 'Custom';
 
   let exportW: number;
@@ -36,7 +68,7 @@ export function createExportCanvas(
     drawImgY = framing.imgOffsetY;
     drawImgW = framing.imgDisplayW;
     drawImgH = framing.imgDisplayH;
-    if (framing.backgroundColor && framing.backgroundColor !== 'transparent') {
+    if (!isBlankGrid && framing.backgroundColor && framing.backgroundColor !== 'transparent') {
       bgFillColor = framing.backgroundColor;
     }
   } else {
@@ -44,59 +76,241 @@ export function createExportCanvas(
     exportH = processedCanvas.height;
   }
 
-  const footerHeight = includeScaleWatermark ? Math.max(36, Math.round(exportH * 0.05)) : 0;
+  // Physical Ruler Margin allowance
+  const rulerThickness = includeRulerMargins ? Math.max(28, Math.round(Math.min(exportW, exportH) * 0.038)) : 0;
+
+  // Drafter's Spec Legend or Standard Footer height
+  const drafterLegendHeight = includeDrafterLegend ? Math.max(68, Math.round(exportH * 0.08)) : 0;
+  const standardFooterHeight = !includeDrafterLegend && includeScaleWatermark ? Math.max(36, Math.round(exportH * 0.05)) : 0;
+  const bottomFooterHeight = drafterLegendHeight || standardFooterHeight;
+
+  const totalW = exportW + rulerThickness;
+  const totalH = exportH + rulerThickness + bottomFooterHeight;
+
   const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = exportW;
-  exportCanvas.height = exportH + footerHeight;
+  exportCanvas.width = totalW;
+  exportCanvas.height = totalH;
 
   const ctx = exportCanvas.getContext('2d');
   if (!ctx) throw new Error('Could not get export canvas 2d context');
 
-  // Fill background with chosen canvas/matting color
-  ctx.fillStyle = bgFillColor;
-  ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  // Fill canvas background
+  ctx.fillStyle = isBlankGrid ? '#ffffff' : bgFillColor;
+  ctx.fillRect(0, 0, totalW, totalH);
 
-  // Draw processed image (clipped to page frame if page standard selected)
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, exportW, exportH);
-  ctx.clip();
-  ctx.drawImage(processedCanvas, drawImgX, drawImgY, drawImgW, drawImgH);
-  ctx.restore();
+  const contentOriginX = rulerThickness;
+  const contentOriginY = rulerThickness;
 
-  // Draw grid & labels if requested
-  if (includeGrid) {
-    const isCustomOrContain = paper?.fitMode && paper.fitMode !== 'cover';
-    const target = paper?.gridTarget || (isCustomOrContain ? 'image' : 'paper');
-    if (target === 'image' && isPage && drawImgW > 0 && drawImgH > 0) {
-      drawGridOverlayOnRect(ctx, drawImgX, drawImgY, drawImgW, drawImgH, grid, includeLabels);
-    } else {
-      drawGridOverlay(ctx, exportW, exportH, grid, includeLabels);
-    }
+  // Draw processed image if NOT a matching blank grid sheet
+  if (!isBlankGrid) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(contentOriginX, contentOriginY, exportW, exportH);
+    ctx.clip();
+    ctx.drawImage(processedCanvas, contentOriginX + drawImgX, contentOriginY + drawImgY, drawImgW, drawImgH);
+    ctx.restore();
   }
 
-  // Draw metadata footer banner if requested
-  if (includeScaleWatermark && footerHeight > 0) {
-    const scaleInfo = calculatePaperGridScale(exportW, exportH, grid.rows, grid.columns, paper);
-    ctx.fillStyle = '#181b23';
-    ctx.fillRect(0, exportH, exportW, footerHeight);
+  // Draw Grid Overlay
+  // For blank grid sheet, guarantee high-contrast dark lines if grid color was white
+  const effectiveGrid: GridConfig = isBlankGrid
+    ? {
+        ...grid,
+        color: grid.color === '#ffffff' ? '#1e293b' : grid.color,
+        opacity: Math.max(0.65, grid.opacity),
+        labelColor: grid.labelColor === '#ffffff' ? '#0f172a' : grid.labelColor,
+      }
+    : grid;
 
-    const fontSize = Math.max(11, Math.round(footerHeight * 0.35));
+  if (includeGrid || isBlankGrid) {
+    const isCustomOrContain = paper?.fitMode && paper.fitMode !== 'cover';
+    const target = paper?.gridTarget || (isCustomOrContain ? 'image' : 'paper');
+
+    ctx.save();
+    ctx.translate(contentOriginX, contentOriginY);
+    if (!isBlankGrid && target === 'image' && isPage && drawImgW > 0 && drawImgH > 0) {
+      drawGridOverlayOnRect(ctx, drawImgX, drawImgY, drawImgW, drawImgH, effectiveGrid, includeLabels);
+    } else {
+      drawGridOverlay(ctx, exportW, exportH, effectiveGrid, includeLabels);
+    }
+    ctx.restore();
+  }
+
+  // Draw Physical Ruler Margins if enabled
+  const scaleInfo = calculatePaperGridScale(exportW, exportH, grid.rows, grid.columns, paper);
+  if (includeRulerMargins && rulerThickness > 0) {
+    drawPhysicalRulerMargins(
+      ctx,
+      contentOriginX,
+      contentOriginY,
+      exportW,
+      exportH,
+      scaleInfo.paperWidthMm,
+      scaleInfo.paperHeightMm,
+      { theme: isBlankGrid ? 'light' : 'light', rulerThickness }
+    );
+  }
+
+  // Draw Drafter's Spec Legend if enabled
+  if (includeDrafterLegend && drafterLegendHeight > 0) {
+    const drafterSpecs: DrafterSpecParams = {
+      title: exportConfig.drafterTitle || (isBlankGrid ? 'Matching Blank Grid Sheet' : 'Studio Reference Drawing'),
+      artistName: exportConfig.artistName || 'GridSketch Drafter',
+      sheetPreset: paper.preset,
+      orientation: paper.orientation === 'portrait' ? 'Portrait' : 'Landscape',
+      dimensionsMm: `${scaleInfo.paperWidthMm} × ${scaleInfo.paperHeightMm} mm`,
+      gridMatrix: `${grid.columns} × ${grid.rows} (${grid.columns * grid.rows} Cells)`,
+      cellSizeMm: `${scaleInfo.cellWidthMm.toFixed(1)} × ${scaleInfo.cellHeightMm.toFixed(1)} mm`,
+      cellSizeIn: `${scaleInfo.cellWidthIn.toFixed(2)}″ × ${scaleInfo.cellHeightIn.toFixed(2)}″`,
+      filterMode: isBlankGrid ? 'Clean Blank Grid' : filterName,
+      dateStr: new Date().toISOString().slice(0, 10),
+    };
+    drawDraftersSpecLegend(
+      ctx,
+      0,
+      contentOriginY + exportH,
+      totalW,
+      drafterLegendHeight,
+      drafterSpecs,
+      isBlankGrid ? 'light' : 'light'
+    );
+  } else if (includeScaleWatermark && standardFooterHeight > 0) {
+    // Fallback standard metadata footer
+    const footerY = contentOriginY + exportH;
+    ctx.fillStyle = '#181b23';
+    ctx.fillRect(0, footerY, totalW, standardFooterHeight);
+
+    const fontSize = Math.max(11, Math.round(standardFooterHeight * 0.35));
     ctx.font = `500 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
     ctx.fillStyle = '#e2e8f0';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    const textY = exportH + footerHeight / 2;
-    const title = `GridSketch Reference • Grid: ${grid.columns}×${grid.rows} • Mode: ${filterName}`;
+    const textY = footerY + standardFooterHeight / 2;
+    const title = isBlankGrid
+      ? `GridSketch Blank Grid Sheet • ${grid.columns}×${grid.rows} • Direct Canvas Verification`
+      : `GridSketch Reference • Grid: ${grid.columns}×${grid.rows} • Mode: ${filterName}`;
     ctx.fillText(title, 20, textY);
 
     ctx.textAlign = 'right';
     const scaleText = `${paper.preset}: ${scaleInfo.cellWidthMm.toFixed(1)}×${scaleInfo.cellHeightMm.toFixed(1)}mm per square`;
-    ctx.fillText(scaleText, exportW - 20, textY);
+    ctx.fillText(scaleText, totalW - 20, textY);
   }
 
   return exportCanvas;
+}
+
+/**
+ * Creates a Side-by-Side Dual Export Canvas:
+ * Left panel: Clean Reference Photo (uncluttered tonal/color study)
+ * Right panel: Calibrated Grid Overlay (proportions & coordinates)
+ */
+export function createSideBySideCanvas(
+  cleanCanvas: HTMLCanvasElement,
+  griddedCanvas: HTMLCanvasElement,
+  grid: GridConfig,
+  exportConfig: ExportConfig,
+  paper: PaperConfig,
+  filterName: string
+): HTMLCanvasElement {
+  const panelW = cleanCanvas.width;
+  const panelH = cleanCanvas.height;
+  const gap = Math.max(24, Math.round(panelW * 0.03));
+  const headerHeight = Math.max(38, Math.round(panelH * 0.055));
+
+  const drafterLegendHeight = exportConfig.includeDrafterLegend ? Math.max(68, Math.round(panelH * 0.08)) : 0;
+  const standardFooterHeight = !exportConfig.includeDrafterLegend && exportConfig.includeScaleWatermark ? Math.max(36, Math.round(panelH * 0.05)) : 0;
+  const bottomFooterHeight = drafterLegendHeight || standardFooterHeight;
+
+  const totalW = panelW * 2 + gap + 32; // 16px padding on outer sides
+  const totalH = panelH + headerHeight + bottomFooterHeight + 16;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = totalW;
+  canvas.height = totalH;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get side-by-side canvas 2d context');
+
+  // Fill studio matte background
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  const leftX = 16;
+  const rightX = leftX + panelW + gap;
+  const contentY = headerHeight + 8;
+
+  // Header 1: Left Clean Panel
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = `bold ${Math.max(12, Math.round(headerHeight * 0.38))}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('1. TONAL & COLOR REFERENCE (CLEAN)', leftX, headerHeight / 2);
+
+  // Header 2: Right Gridded Panel
+  ctx.fillStyle = '#c8a0f0';
+  ctx.fillText('2. CALIBRATED GRID OVERLAY (MEASUREMENT)', rightX, headerHeight / 2);
+
+  // Draw Left Clean Image
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(leftX, contentY, panelW, panelH);
+  ctx.drawImage(cleanCanvas, leftX, contentY, panelW, panelH);
+
+  // Draw Right Gridded Image
+  ctx.fillRect(rightX, contentY, panelW, panelH);
+  ctx.drawImage(griddedCanvas, rightX, contentY, panelW, panelH);
+
+  // Draw Grid Overlay onto the Right panel
+  ctx.save();
+  ctx.translate(rightX, contentY);
+  drawGridOverlay(ctx, panelW, panelH, grid, exportConfig.includeLabels);
+  ctx.restore();
+
+  // Draw Center Divider Line
+  const dividerX = leftX + panelW + gap / 2;
+  ctx.strokeStyle = 'rgba(125, 211, 252, 0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(dividerX, 8);
+  ctx.lineTo(dividerX, contentY + panelH);
+  ctx.stroke();
+
+  // Footer: Drafter's Spec Legend or Watermark Banner
+  const scaleInfo = calculatePaperGridScale(panelW, panelH, grid.rows, grid.columns, paper);
+  const footerY = contentY + panelH + 8;
+
+  if (exportConfig.includeDrafterLegend && drafterLegendHeight > 0) {
+    const drafterSpecs: DrafterSpecParams = {
+      title: exportConfig.drafterTitle || 'Dual Reference: Color Study & Calibrated Grid',
+      artistName: exportConfig.artistName || 'GridSketch Artist',
+      sheetPreset: paper.preset,
+      orientation: 'Side-by-Side Dual',
+      dimensionsMm: `${scaleInfo.paperWidthMm * 2} × ${scaleInfo.paperHeightMm} mm (Combined)`,
+      gridMatrix: `${grid.columns} × ${grid.rows} (${grid.columns * grid.rows} Cells)`,
+      cellSizeMm: `${scaleInfo.cellWidthMm.toFixed(1)} × ${scaleInfo.cellHeightMm.toFixed(1)} mm`,
+      cellSizeIn: `${scaleInfo.cellWidthIn.toFixed(2)}″ × ${scaleInfo.cellHeightIn.toFixed(2)}″`,
+      filterMode: filterName,
+      dateStr: new Date().toISOString().slice(0, 10),
+    };
+    drawDraftersSpecLegend(ctx, 0, footerY, totalW, drafterLegendHeight, drafterSpecs, 'dark');
+  } else if (exportConfig.includeScaleWatermark && standardFooterHeight > 0) {
+    ctx.fillStyle = '#181b23';
+    ctx.fillRect(0, footerY, totalW, standardFooterHeight);
+
+    const fontSize = Math.max(11, Math.round(standardFooterHeight * 0.35));
+    ctx.font = `500 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillStyle = '#e2e8f0';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    const textY = footerY + standardFooterHeight / 2;
+    ctx.fillText(`GridSketch Dual Reference • Left: Clean Study • Right: Calibrated ${grid.columns}×${grid.rows} Grid`, 20, textY);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(`${paper.preset}: ${scaleInfo.cellWidthMm.toFixed(1)}×${scaleInfo.cellHeightMm.toFixed(1)}mm per square`, totalW - 20, textY);
+  }
+
+  return canvas;
 }
 
 /**
@@ -295,22 +509,250 @@ export async function downloadImage(
 }
 
 /**
+ * Multi-page Poster PDF Split for large canvas drawings on home printers.
+ * Slices the gridded artwork across standard home printer pages (A4 / Letter)
+ * with overlap glue borders, registration crosshairs, and tile coordinates.
+ */
+export async function downloadPosterPdf(
+  canvas: HTMLCanvasElement,
+  filename: string,
+  paper: PaperConfig,
+  grid: GridConfig,
+  posterConfig?: PosterSplitConfig,
+  preferShareOnMobile: boolean = true
+): Promise<{ method: 'share' | 'download' }> {
+  const { jsPDF } = await import('jspdf');
+
+  const rows = Math.max(1, Math.min(6, posterConfig?.rows || 2));
+  const cols = Math.max(1, Math.min(6, posterConfig?.columns || 2));
+  const overlapMm = Math.max(5, Math.min(30, posterConfig?.overlapMm || 10));
+  const totalSheets = rows * cols;
+
+  const isLandscape = paper.orientation === 'landscape';
+  const format =
+    paper.preset === 'Custom'
+      ? [paper.customWidthMm || 210, paper.customHeightMm || 297]
+      : paper.preset.toLowerCase();
+
+  const doc = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: format,
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 12; // 12mm page margin
+
+  const maxW = pageWidth - margin * 2;
+  const maxH = pageHeight - margin * 2 - 14;
+
+  const tileW = canvas.width / cols;
+  const tileH = canvas.height / rows;
+
+  const offscreenTile = document.createElement('canvas');
+  offscreenTile.width = Math.round(tileW);
+  offscreenTile.height = Math.round(tileH);
+  const tileCtx = offscreenTile.getContext('2d');
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const sheetIndex = r * cols + c + 1;
+      if (sheetIndex > 1) {
+        doc.addPage(format, isLandscape ? 'landscape' : 'portrait');
+      }
+
+      // Slice out current tile from the main gridded canvas
+      if (tileCtx) {
+        tileCtx.clearRect(0, 0, offscreenTile.width, offscreenTile.height);
+        tileCtx.drawImage(
+          canvas,
+          Math.round(c * tileW),
+          Math.round(r * tileH),
+          Math.round(tileW),
+          Math.round(tileH),
+          0,
+          0,
+          offscreenTile.width,
+          offscreenTile.height
+        );
+      }
+
+      // 1. Header Banner
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text(
+        `GRIDSKETCH POSTER MULTI-TILE SYSTEM • SHEET ${sheetIndex} OF ${totalSheets}`,
+        margin,
+        margin - 2
+      );
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        `Tile [Row ${r + 1} of ${rows}, Col ${c + 1} of ${cols}] • Overlap: ${overlapMm} mm`,
+        pageWidth - margin,
+        margin - 2,
+        { align: 'right' }
+      );
+
+      // Fit tile within printable area
+      const tileRatio = tileW / tileH;
+      let renderW = maxW;
+      let renderH = maxW / tileRatio;
+      if (renderH > maxH) {
+        renderH = maxH;
+        renderW = maxH * tileRatio;
+      }
+
+      const posX = (pageWidth - renderW) / 2;
+      const posY = margin + 4;
+
+      // 2. Add Sliced Tile Image
+      const tileDataUrl = offscreenTile.toDataURL('image/jpeg', 0.95);
+      doc.addImage(tileDataUrl, 'JPEG', posX, posY, renderW, renderH);
+
+      // 3. Draw Cut/Glue Registration Guides & Corner Crosshairs
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineDashPattern([2, 2], 0);
+      doc.setLineWidth(0.3);
+      doc.rect(posX, posY, renderW, renderH);
+
+      // Corner Crosshairs for physical alignment
+      const crossSize = 3;
+      doc.setLineDashPattern([], 0);
+      doc.setDrawColor(2, 132, 199);
+      doc.setLineWidth(0.4);
+
+      // 4 corners
+      const corners = [
+        [posX, posY],
+        [posX + renderW, posY],
+        [posX, posY + renderH],
+        [posX + renderW, posY + renderH],
+      ];
+      for (const [cx, cy] of corners) {
+        doc.line(cx - crossSize, cy, cx + crossSize, cy);
+        doc.line(cx, cy - crossSize, cx, cy + crossSize);
+      }
+
+      // 4. Poster Sheet Footer
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      const footerMsg = `✂ Cut along dashed lines • Align registration crosshairs (+) • Assembly: ${cols} across × ${rows} down`;
+      doc.text(footerMsg, pageWidth / 2, pageHeight - 4, { align: 'center' });
+    }
+  }
+
+  const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `_poster_${cols}x${rows}.pdf`;
+
+  // Native Mobile APK
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const dataUri = doc.output('datauristring');
+      const base64Data = dataUri.split(',')[1];
+
+      const cached = await Filesystem.writeFile({
+        path: cleanFilename,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      try {
+        await Filesystem.writeFile({
+          path: cleanFilename,
+          data: base64Data,
+          directory: Directory.Documents,
+        });
+      } catch (e) {
+        console.warn('Documents save fallback:', e);
+      }
+
+      await Share.share({
+        title: 'GridSketch Poster PDF',
+        text: `Multi-tile poster sheet (${cols}×${rows}): ${cleanFilename}`,
+        url: cached.uri,
+        dialogTitle: 'Save or Share Multi-Tile Poster PDF',
+      });
+
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+      return { method: 'share' };
+    } catch (capErr: unknown) {
+      if (
+        capErr instanceof Error &&
+        (capErr.name === 'AbortError' ||
+          capErr.message?.includes('canceled') ||
+          capErr.message?.includes('closed') ||
+          capErr.message?.includes('dismissed'))
+      ) {
+        return { method: 'share' };
+      }
+      console.warn('Capacitor native poster export failed, using web fallback:', capErr);
+    }
+  }
+
+  // Web Share API
+  if (preferShareOnMobile && canShareFiles()) {
+    try {
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], cleanFilename, { type: 'application/pdf' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'GridSketch Poster Reference',
+          text: `Printable multi-tile poster (${cols}×${rows}): ${cleanFilename}`,
+        });
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+        return { method: 'share' };
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+        return { method: 'share' };
+      }
+    }
+  }
+
+  // Direct Browser Download
+  doc.save(cleanFilename);
+  confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+  return { method: 'download' };
+}
+
+/**
  * Export high-resolution PDF formatted for standard artist paper (A4, Letter, etc.)
- * On native mobile APK (Capacitor Android/iOS), saves directly to the device filesystem
- * and triggers Android native Share sheet so the user can save to Files, Google Drive, or Print.
+ * Supports standard single reference, matching blank grid sheets, side-by-side dual,
+ * and delegates to downloadPosterPdf if poster mode is selected.
  */
 export async function downloadPdf(
   canvas: HTMLCanvasElement,
   filename: string,
   paper: PaperConfig,
   grid: GridConfig,
+  exportConfig?: ExportConfig,
   preferShareOnMobile: boolean = true
 ): Promise<{ method: 'share' | 'download' }> {
+  // If Poster Multi-Tile Split is requested, route to downloadPosterPdf
+  if (exportConfig?.exportMode === 'poster') {
+    return downloadPosterPdf(
+      canvas,
+      filename,
+      paper,
+      grid,
+      exportConfig.posterConfig,
+      preferShareOnMobile
+    );
+  }
+
   // Dynamically import jsPDF to keep initial bundle size lean
   const { jsPDF } = await import('jspdf');
 
   const isLandscape = paper.orientation === 'landscape';
-  const format = paper.preset === 'Custom' ? [paper.customWidthMm || 200, paper.customHeightMm || 200] : paper.preset.toLowerCase();
+  const format =
+    paper.preset === 'Custom'
+      ? [paper.customWidthMm || 200, paper.customHeightMm || 200]
+      : paper.preset.toLowerCase();
 
   const doc = new jsPDF({
     orientation: isLandscape ? 'landscape' : 'portrait',
@@ -338,9 +780,17 @@ export async function downloadPdf(
   const posY = margin + 6;
 
   // Title header on PDF
+  const isBlank = exportConfig?.exportMode === 'blank_grid';
+  const isDual = exportConfig?.exportMode === 'side_by_side';
+  const headerTitle = isBlank
+    ? 'GridSketch — Matching Blank Grid Sheet (Calibrated)'
+    : isDual
+    ? 'GridSketch — Side-by-Side Dual Reference (Color & Grid)'
+    : 'GridSketch — Digital Drawing Assistant Reference';
+
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
-  doc.text('GridSketch — Digital Drawing Assistant Reference', margin, margin);
+  doc.text(headerTitle, margin, margin);
 
   // Add high-resolution image
   const imgDataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -353,7 +803,8 @@ export async function downloadPdf(
   const footerText = `${scaleInfo.rulerSummary} | Printable size: ${renderW.toFixed(1)} × ${renderH.toFixed(1)} mm`;
   doc.text(footerText, pageWidth / 2, pageHeight - 5, { align: 'center' });
 
-  const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `_gridsketch.pdf`;
+  const modeSuffix = isBlank ? '_blank_grid' : isDual ? '_dual_reference' : '';
+  const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `${modeSuffix}_gridsketch.pdf`;
 
   // Native Capacitor App (Android APK / iOS app)
   if (Capacitor.isNativePlatform()) {
@@ -445,3 +896,4 @@ export async function downloadPdf(
 
   return { method: 'download' };
 }
+

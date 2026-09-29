@@ -11,10 +11,11 @@ import {
   FileText,
   Move,
   Scaling,
+  Ruler,
 } from 'lucide-react';
 import { GridConfig, PaperConfig } from '@/types/editor';
-import { drawGridOverlay, drawGridOverlayOnRect } from '@/lib/image/grid-renderer';
-import { calculatePageFraming } from '@/lib/image/paper-calculator';
+import { drawGridOverlay, drawGridOverlayOnRect, drawPhysicalRulerMargins } from '@/lib/image/grid-renderer';
+import { calculatePageFraming, calculatePaperGridScale } from '@/lib/image/paper-calculator';
 import { throttleRaf } from '@/lib/utils/performance';
 
 interface StudioCanvasProps {
@@ -498,6 +499,21 @@ export function StudioCanvas({
       } else {
         drawGridOverlay(ctx, pageW, pageH, grid, true);
       }
+
+      if (paper?.showRulerMargins) {
+        const scaleInfo = calculatePaperGridScale(pageW, pageH, grid.rows, grid.columns, paper);
+        const rulerThickness = Math.max(26, Math.round(Math.min(pageW, pageH) * 0.035));
+        drawPhysicalRulerMargins(
+          ctx,
+          rulerThickness,
+          rulerThickness,
+          pageW - rulerThickness,
+          pageH - rulerThickness,
+          scaleInfo.paperWidthMm,
+          scaleInfo.paperHeightMm,
+          { theme: 'dark', rulerThickness }
+        );
+      }
     }
   }, [processedCanvas, pageDims, grid, paper, showCompare, holdOriginal]);
 
@@ -772,6 +788,21 @@ export function StudioCanvas({
             >
               <Move className="w-4 h-4" />
             </button>
+
+            {/* Physical Ruler Margins Direct Verification Toggle */}
+            {onPaperChange && (
+              <button
+                onClick={() => onPaperChange({ showRulerMargins: !paper?.showRulerMargins })}
+                className={`p-1.5 rounded-full transition-all shrink-0 active:scale-95 ${
+                  paper?.showRulerMargins
+                    ? 'bg-[#7dd3fc] text-[#0a0e1a] font-bold shadow-[0_0_12px_rgba(125,211,252,0.4)]'
+                    : 'hover:bg-[#7dd3fc]/15 text-[#bae6fd]'
+                }`}
+                title={paper?.showRulerMargins ? 'Hide physical ruler margins' : 'Show physical ruler margins (1:1 mm)'}
+              >
+                <Ruler className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Quick Fit Mode Toggle Button (Icon Only) */}
             {onPaperChange && (

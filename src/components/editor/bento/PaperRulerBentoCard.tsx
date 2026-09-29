@@ -151,6 +151,25 @@ export function PaperRulerBentoCard({
           </span>
         </div>
       </div>
+
+      {/* Direct Ruler Margins Verification Toggle */}
+      <button
+        type="button"
+        onClick={() => onChange({ showRulerMargins: !paper.showRulerMargins })}
+        className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-xs font-medium transition-all ${
+          paper.showRulerMargins
+            ? 'bg-[#7dd3fc]/15 border-[#7dd3fc]/50 text-[#7dd3fc] shadow-[0_0_12px_rgba(125,211,252,0.2)]'
+            : 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.12)] text-[#94a3b8] hover:text-[#f0f6fc]'
+        }`}
+      >
+        <span className="flex items-center gap-2">
+          <Ruler className="w-3.5 h-3.5 text-[#7dd3fc]" />
+          <span>Physical Ruler Margins</span>
+        </span>
+        <span className="text-[10px] font-mono">
+          {paper.showRulerMargins ? '1:1 MM ACTIVE' : 'OFF'}
+        </span>
+      </button>
     </BentoCard>
   );
 }

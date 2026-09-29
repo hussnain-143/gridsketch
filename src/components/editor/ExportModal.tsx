@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   ExportConfig,
   ExportFormat,
+  ExportMode,
   GridConfig,
   PaperConfig,
 } from '@/types/editor';
@@ -14,6 +15,13 @@ import {
   FileText,
   CheckCircle2,
   Share2,
+  Grid,
+  Columns2,
+  Layers,
+  Ruler,
+  FileSpreadsheet,
+  Scissors,
+  Bookmark,
 } from 'lucide-react';
 import {
   createExportCanvas,
@@ -21,11 +29,13 @@ import {
   downloadPdf,
   canShareFiles,
 } from '@/lib/image/export';
+import { calculatePaperGridScale } from '@/lib/image/paper-calculator';
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   processedCanvas: HTMLCanvasElement | null;
+  rawImageCanvas?: HTMLCanvasElement | null;
   imageName: string;
   grid: GridConfig;
   paper: PaperConfig;
@@ -36,6 +46,7 @@ export function ExportModal({
   isOpen,
   onClose,
   processedCanvas,
+  rawImageCanvas,
   imageName,
   grid,
   paper,
@@ -43,10 +54,20 @@ export function ExportModal({
 }: ExportModalProps) {
   const [config, setConfig] = useState<ExportConfig>({
     format: 'png',
+    exportMode: 'standard',
     includeGrid: true,
     includeLabels: grid.labelMode !== 'none',
     includeScaleWatermark: true,
+    includeRulerMargins: false,
+    includeDrafterLegend: false,
     quality: 0.95,
+    posterConfig: {
+      rows: 2,
+      columns: 2,
+      overlapMm: 10,
+    },
+    drafterTitle: imageName,
+    artistName: '',
   });
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -55,6 +76,29 @@ export function ExportModal({
   const isMobileShare = typeof window !== 'undefined' && canShareFiles();
 
   if (!isOpen || !processedCanvas) return null;
+
+  const scaleAnalysis = calculatePaperGridScale(
+    processedCanvas.width,
+    processedCanvas.height,
+    grid.rows,
+    grid.columns,
+    paper
+  );
+
+  const handleExportModeChange = (mode: ExportMode) => {
+    setConfig((prev) => {
+      let format = prev.format;
+      // Multi-tile poster requires PDF
+      if (mode === 'poster') {
+        format = 'pdf';
+      }
+      return {
+        ...prev,
+        exportMode: mode,
+        format,
+      };
+    });
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -65,12 +109,13 @@ export function ExportModal({
         grid,
         config,
         paper,
-        currentFilterName
+        currentFilterName,
+        rawImageCanvas
       );
 
       let result: { method: 'share' | 'download' };
-      if (config.format === 'pdf') {
-        result = await downloadPdf(exportCanvas, imageName, paper, grid);
+      if (config.format === 'pdf' || config.exportMode === 'poster') {
+        result = await downloadPdf(exportCanvas, imageName, paper, grid, config);
       } else {
         result = await downloadImage(exportCanvas, imageName, config.format, config.quality);
       }
@@ -79,7 +124,7 @@ export function ExportModal({
       setTimeout(() => {
         onClose();
         setExportSuccess(false);
-      }, 1400);
+      }, 1500);
     } catch (err) {
       console.error('Export error:', err);
       alert('An error occurred during export.');
@@ -89,19 +134,19 @@ export function ExportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-md rounded-2xl overflow-hidden text-[#f0f6fc] shadow-2xl animate-in zoom-in-95 duration-150"
+        className="relative w-full max-w-xl max-h-[92vh] flex flex-col rounded-2xl overflow-hidden text-[#f0f6fc] shadow-2xl animate-in zoom-in-95 duration-150"
         style={{
-          background: 'rgba(14, 23, 42, 0.85)',
+          background: 'rgba(14, 23, 42, 0.92)',
           backdropFilter: 'blur(28px)',
           WebkitBackdropFilter: 'blur(28px)',
-          border: '1px solid rgba(125, 211, 252, 0.2)',
-          boxShadow: '0 20px 50px rgba(6, 12, 24, 0.6), 0 0 35px rgba(125, 211, 252, 0.08)',
+          border: '1px solid rgba(125, 211, 252, 0.22)',
+          boxShadow: '0 20px 50px rgba(6, 12, 24, 0.7), 0 0 35px rgba(125, 211, 252, 0.1)',
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4.5 border-b border-[rgba(125,211,252,0.12)] bg-[rgba(15,21,36,0.5)]">
+        <div className="flex items-center justify-between p-4 border-b border-[rgba(125,211,252,0.12)] bg-[rgba(15,21,36,0.6)]">
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center"
@@ -115,10 +160,10 @@ export function ExportModal({
             </div>
             <div>
               <h2 className="font-semibold text-sm text-[#f0f6fc]">
-                Export Reference
+                Export & Printing Studio
               </h2>
               <p className="text-[11px] text-[#94a3b8]">
-                High-resolution image or printable PDF
+                Standard sheets, blank grids, dual views & poster splits
               </p>
             </div>
           </div>
@@ -132,25 +177,172 @@ export function ExportModal({
         </div>
 
         {/* Content Body */}
-        <div className="p-5 space-y-4 text-xs">
-          {/* Format Picker */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+          {/* 1. Purpose & Export Mode Segmented Tabs */}
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#94a3b8] mb-2">
+              Reference Output Mode
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                {
+                  id: 'standard' as ExportMode,
+                  title: 'Standard',
+                  sub: 'Calibrated reference',
+                  icon: Layers,
+                },
+                {
+                  id: 'blank_grid' as ExportMode,
+                  title: 'Blank Grid',
+                  sub: 'Skip manual ruler drawing',
+                  icon: Grid,
+                },
+                {
+                  id: 'side_by_side' as ExportMode,
+                  title: 'Side-by-Side',
+                  sub: 'Oil painters & colorists',
+                  icon: Columns2,
+                },
+                {
+                  id: 'poster' as ExportMode,
+                  title: 'Poster Split',
+                  sub: 'Multi-tile home printer',
+                  icon: Scissors,
+                },
+              ].map((m) => {
+                const active = config.exportMode === m.id;
+                const Icon = m.icon;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => handleExportModeChange(m.id)}
+                    className={`p-2.5 rounded-xl border flex flex-col items-start gap-1 text-left transition-all ${
+                      active
+                        ? 'bg-[rgba(125,211,252,0.18)] border-[#7dd3fc]/70 text-[#7dd3fc] font-medium shadow-[0_0_15px_rgba(125,211,252,0.2)]'
+                        : 'bg-[rgba(10,14,26,0.6)] hover:bg-[#7dd3fc]/10 border-[rgba(125,211,252,0.12)] text-[#94a3b8] hover:text-[#f0f6fc]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 text-[#7dd3fc]" />
+                    <span className="font-bold text-xs leading-none">{m.title}</span>
+                    <span className="text-[10px] text-[#94a3b8] leading-tight line-clamp-1">{m.sub}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mode Context Description Banner */}
+          {config.exportMode === 'blank_grid' && (
+            <div className="p-3 rounded-xl bg-[rgba(125,211,252,0.08)] border border-[rgba(125,211,252,0.2)] text-[11px] text-[#7dd3fc] flex items-start gap-2.5">
+              <Grid className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block font-semibold text-[#f0f6fc]">Matching Blank Grid Sheet</strong>
+                Skips manual pencil and ruler measuring! Prints pure high-contrast calibrated grid lines, coordinates, and aspect ratios directly onto blank artist paper or canvas.
+              </div>
+            </div>
+          )}
+
+          {config.exportMode === 'side_by_side' && (
+            <div className="p-3 rounded-xl bg-[rgba(200,160,240,0.08)] border border-[rgba(200,160,240,0.2)] text-[11px] text-[#c8a0f0] flex items-start gap-2.5">
+              <Columns2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block font-semibold text-[#f0f6fc]">Side-by-Side Dual Reference</strong>
+                Designed for oil painters and portrait colorists: uncluttered clean reference photo on the left, calibrated coordinate grid on the right on a single unified canvas.
+              </div>
+            </div>
+          )}
+
+          {config.exportMode === 'poster' && (
+            <div className="p-3 rounded-xl bg-[rgba(56,189,248,0.08)] border border-[rgba(56,189,248,0.2)] space-y-3">
+              <div className="flex items-start gap-2.5 text-[11px] text-[#38bdf8]">
+                <Scissors className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-semibold text-[#f0f6fc]">Poster Multi-Tile Split (Multi-Page PDF)</strong>
+                  Splits large canvas references across standard home printer pages (A4 / Letter) with alignment cut marks, 10mm overlap glue margins, and corner crosshairs.
+                </div>
+              </div>
+
+              {/* Poster Grid Configuration */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[rgba(125,211,252,0.12)]">
+                <div>
+                  <label className="block text-[10px] text-[#94a3b8] mb-1">
+                    Tile Grid Sheets ({config.posterConfig?.columns || 2} × {config.posterConfig?.rows || 2} = {(config.posterConfig?.columns || 2) * (config.posterConfig?.rows || 2)} Pages)
+                  </label>
+                  <select
+                    value={`${config.posterConfig?.columns || 2}x${config.posterConfig?.rows || 2}`}
+                    onChange={(e) => {
+                      const [cols, rows] = e.target.value.split('x').map(Number);
+                      setConfig((prev) => ({
+                        ...prev,
+                        posterConfig: {
+                          ...prev.posterConfig,
+                          rows: rows || 2,
+                          columns: cols || 2,
+                          overlapMm: prev.posterConfig?.overlapMm || 10,
+                        },
+                      }));
+                    }}
+                    className="w-full bg-[rgba(15,21,36,0.8)] border border-[rgba(125,211,252,0.2)] rounded-lg px-2.5 py-1.5 text-xs text-[#f0f6fc] focus:outline-none"
+                  >
+                    <option value="2x2">2 × 2 Grid (4 Sheets)</option>
+                    <option value="2x3">2 × 3 Grid (6 Sheets)</option>
+                    <option value="3x3">3 × 3 Grid (9 Sheets)</option>
+                    <option value="3x4">3 × 4 Grid (12 Sheets)</option>
+                    <option value="4x4">4 × 4 Grid (16 Sheets)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-[#94a3b8] mb-1">
+                    Glue / Tape Overlap Margin
+                  </label>
+                  <select
+                    value={config.posterConfig?.overlapMm || 10}
+                    onChange={(e) => {
+                      const mm = Number(e.target.value);
+                      setConfig((prev) => ({
+                        ...prev,
+                        posterConfig: {
+                          rows: prev.posterConfig?.rows || 2,
+                          columns: prev.posterConfig?.columns || 2,
+                          overlapMm: mm,
+                        },
+                      }));
+                    }}
+                    className="w-full bg-[rgba(15,21,36,0.8)] border border-[rgba(125,211,252,0.2)] rounded-lg px-2.5 py-1.5 text-xs text-[#f0f6fc] focus:outline-none"
+                  >
+                    <option value={5}>5 mm Overlap</option>
+                    <option value={10}>10 mm Standard Overlap</option>
+                    <option value={15}>15 mm Wide Margin</option>
+                    <option value={20}>20 mm Extra Wide</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2. File Format Picker (disabled when poster mode requires PDF) */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#94a3b8] mb-2">
               File Format
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'png' as ExportFormat, label: 'PNG', sub: 'Lossless quality', icon: FileImage },
-                { id: 'jpeg' as ExportFormat, label: 'JPG', sub: 'Compressed image', icon: FileImage },
-                { id: 'pdf' as ExportFormat, label: 'PDF', sub: `Ready for ${paper.preset}`, icon: FileText },
+                { id: 'png' as ExportFormat, label: 'PNG', sub: 'Lossless quality', icon: FileImage, disabled: config.exportMode === 'poster' },
+                { id: 'jpeg' as ExportFormat, label: 'JPG', sub: 'Compressed image', icon: FileImage, disabled: config.exportMode === 'poster' },
+                { id: 'pdf' as ExportFormat, label: 'PDF', sub: `Ready for ${paper.preset}`, icon: FileText, disabled: false },
               ].map((fmt) => {
                 const active = config.format === fmt.id;
                 const Icon = fmt.icon;
                 return (
                   <button
                     key={fmt.id}
+                    type="button"
+                    disabled={fmt.disabled}
                     onClick={() => setConfig((prev) => ({ ...prev, format: fmt.id }))}
                     className={`p-3 rounded-xl border flex flex-col items-start gap-1 text-left transition-all ${
+                      fmt.disabled ? 'opacity-35 cursor-not-allowed bg-[rgba(10,14,26,0.3)] border-transparent' :
                       active
                         ? 'bg-[rgba(125,211,252,0.18)] border-[#7dd3fc]/70 text-[#7dd3fc] font-medium shadow-[0_0_15px_rgba(125,211,252,0.2)]'
                         : 'bg-[rgba(10,14,26,0.6)] hover:bg-[#7dd3fc]/10 border-[rgba(125,211,252,0.12)] text-[#94a3b8] hover:text-[#f0f6fc]'
@@ -166,7 +358,7 @@ export function ExportModal({
           </div>
 
           {/* Quality slider if JPEG */}
-          {config.format === 'jpeg' && (
+          {config.format === 'jpeg' && config.exportMode !== 'poster' && (
             <div className="p-3 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] space-y-1">
               <div className="flex justify-between text-[11px]">
                 <span className="text-[#94a3b8]">JPEG Quality</span>
@@ -188,72 +380,143 @@ export function ExportModal({
             </div>
           )}
 
-          {/* Layer Options */}
+          {/* 3. Measurement & Verification Layer Options */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#94a3b8] mb-2">
-              Layers & Markings
+              Physical Measurement & Spec Legends
             </label>
             <div className="space-y-2">
+              {/* Physical Ruler Margins Toggle */}
               <label className="flex items-center justify-between p-2.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] cursor-pointer hover:bg-[#7dd3fc]/10 transition-colors">
-                <span className="font-medium text-[#f0f6fc]">Include Grid Overlay</span>
+                <div className="flex items-center gap-2.5">
+                  <Ruler className="w-4 h-4 text-[#7dd3fc] shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-medium text-[#f0f6fc]">Physical Ruler Margins</span>
+                    <span className="text-[10px] text-[#94a3b8]">
+                      Millimeter & centimeter ruler tick marks along margins for direct wooden ruler verification
+                    </span>
+                  </div>
+                </div>
                 <input
                   type="checkbox"
-                  checked={config.includeGrid}
+                  checked={config.includeRulerMargins}
                   onChange={(e) =>
-                    setConfig((prev) => ({ ...prev, includeGrid: e.target.checked }))
+                    setConfig((prev) => ({ ...prev, includeRulerMargins: e.target.checked }))
                   }
                   className="rounded w-4 h-4 cursor-pointer accent-[#7dd3fc]"
                 />
               </label>
 
+              {/* Drafter's Spec Legend Toggle */}
               <label className="flex items-center justify-between p-2.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] cursor-pointer hover:bg-[#7dd3fc]/10 transition-colors">
-                <span className="font-medium text-[#f0f6fc]">Include Coordinates (A1, B2)</span>
+                <div className="flex items-center gap-2.5">
+                  <Bookmark className="w-4 h-4 text-[#7dd3fc] shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-medium text-[#f0f6fc]">Drafter&apos;s Spec Legend</span>
+                    <span className="text-[10px] text-[#94a3b8]">
+                      Engineering title block with grid specs, paper dimensions, and record-keeping notes
+                    </span>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.includeDrafterLegend}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, includeDrafterLegend: e.target.checked }))
+                  }
+                  className="rounded w-4 h-4 cursor-pointer accent-[#7dd3fc]"
+                />
+              </label>
+
+              {/* Grid & Label Controls */}
+              {config.exportMode !== 'blank_grid' && (
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] cursor-pointer hover:bg-[#7dd3fc]/10 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <Grid className="w-4 h-4 text-[#7dd3fc] shrink-0" />
+                    <span className="font-medium text-[#f0f6fc]">Include Grid Overlay</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={config.includeGrid}
+                    onChange={(e) =>
+                      setConfig((prev) => ({ ...prev, includeGrid: e.target.checked }))
+                    }
+                    className="rounded w-4 h-4 cursor-pointer accent-[#7dd3fc]"
+                  />
+                </label>
+              )}
+
+              <label className="flex items-center justify-between p-2.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] cursor-pointer hover:bg-[#7dd3fc]/10 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <FileSpreadsheet className="w-4 h-4 text-[#7dd3fc] shrink-0" />
+                  <span className="font-medium text-[#f0f6fc]">Include Coordinates (A1, B2)</span>
+                </div>
                 <input
                   type="checkbox"
                   checked={config.includeLabels}
-                  disabled={!config.includeGrid}
+                  disabled={!config.includeGrid && config.exportMode !== 'blank_grid'}
                   onChange={(e) =>
                     setConfig((prev) => ({ ...prev, includeLabels: e.target.checked }))
                   }
                   className="rounded w-4 h-4 cursor-pointer accent-[#7dd3fc] disabled:opacity-30"
                 />
               </label>
-
-              <label className="flex items-center justify-between p-2.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] cursor-pointer hover:bg-[#7dd3fc]/10 transition-colors">
-                <div className="flex flex-col">
-                  <span className="font-medium text-[#f0f6fc]">Physical Millimeter Ruler Banner</span>
-                  <span className="text-[10px] text-[#94a3b8]">
-                    Embeds real-world millimeter ruler on bottom edge
-                  </span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={config.includeScaleWatermark}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      includeScaleWatermark: e.target.checked,
-                    }))
-                  }
-                  className="rounded w-4 h-4 cursor-pointer accent-[#7dd3fc]"
-                />
-              </label>
             </div>
           </div>
 
-          {/* Export Details */}
-          <div className="p-3 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] flex items-center justify-between text-[11px] text-[#94a3b8]">
-            <span>Resolution</span>
-            <span className="font-mono text-[#7dd3fc]">
-              {processedCanvas.width} × {processedCanvas.height} px
-            </span>
+          {/* Drafter Title / Artist input if Drafter's Spec Legend enabled */}
+          {config.includeDrafterLegend && (
+            <div className="p-3 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.14)] grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] text-[#94a3b8] mb-1">Project / Artwork Title</label>
+                <input
+                  type="text"
+                  value={config.drafterTitle || ''}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, drafterTitle: e.target.value }))}
+                  placeholder="Artwork title..."
+                  className="w-full bg-[rgba(15,21,36,0.8)] border border-[rgba(125,211,252,0.2)] rounded-lg px-2.5 py-1 text-xs text-[#f0f6fc] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-[#94a3b8] mb-1">Artist / Drafter Name</label>
+                <input
+                  type="text"
+                  value={config.artistName || ''}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, artistName: e.target.value }))}
+                  placeholder="Artist name..."
+                  className="w-full bg-[rgba(15,21,36,0.8)] border border-[rgba(125,211,252,0.2)] rounded-lg px-2.5 py-1 text-xs text-[#f0f6fc] focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 4. Live Calibration Spec Summary */}
+          <div className="p-3 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.12)] space-y-1 text-[11px] text-[#94a3b8]">
+            <div className="flex justify-between">
+              <span>Standard Paper</span>
+              <span className="font-mono text-[#f0f6fc]">
+                {paper.preset} ({scaleAnalysis.paperWidthMm} × {scaleAnalysis.paperHeightMm} mm)
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Cell Calibration</span>
+              <span className="font-mono text-[#7dd3fc]">
+                {scaleAnalysis.cellWidthMm.toFixed(1)} × {scaleAnalysis.cellHeightMm.toFixed(1)} mm ({scaleAnalysis.cellWidthIn.toFixed(2)}″ × {scaleAnalysis.cellHeightIn.toFixed(2)}″)
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Matrix</span>
+              <span className="font-mono text-[#c8a0f0]">
+                {grid.columns} × {grid.rows} ({grid.columns * grid.rows} cells)
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-[rgba(125,211,252,0.12)] flex items-center justify-between gap-2 bg-[rgba(15,21,36,0.5)]">
+        <div className="p-4 border-t border-[rgba(125,211,252,0.12)] flex items-center justify-between gap-2 bg-[rgba(15,21,36,0.6)]">
           <div className="text-[10px] text-[#94a3b8] hidden sm:block">
-            {isMobileShare ? '✓ Direct share ready' : '✓ 300 DPI high-res'}
+            {isMobileShare ? '✓ Native mobile share & save' : '✓ Studio 300 DPI high-res'}
           </div>
           <div className="flex items-center gap-2 ml-auto">
             <button
@@ -280,17 +543,23 @@ export function ExportModal({
               ) : exportSuccess ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                  <span>{exportMethod === 'share' ? '✓ Shared / Saved!' : '✓ Downloaded!'}</span>
+                  <span>{exportMethod === 'share' ? '✓ Saved & Shared!' : '✓ Downloaded!'}</span>
                 </>
               ) : isMobileShare ? (
                 <>
                   <Share2 className="w-4 h-4 stroke-[2.5]" />
-                  <span>Share / Save {config.format.toUpperCase()}</span>
+                  <span>
+                    Share / Save{' '}
+                    {config.exportMode === 'poster' ? 'POSTER PDF' : config.format.toUpperCase()}
+                  </span>
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4 stroke-[2.5]" />
-                  <span>Download {config.format.toUpperCase()}</span>
+                  <span>
+                    Download{' '}
+                    {config.exportMode === 'poster' ? 'POSTER PDF' : config.format.toUpperCase()}
+                  </span>
                 </>
               )}
             </button>

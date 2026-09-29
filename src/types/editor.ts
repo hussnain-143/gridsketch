@@ -1,4 +1,9 @@
-export type FilterMode = 'original' | 'grayscale' | 'high_contrast';
+export type FilterMode =
+  | 'original'
+  | 'grayscale'
+  | 'high_contrast'
+  | 'value_study'
+  | 'notan';
 
 export type LabelMode = 'alphanumeric' | 'numeric' | 'none';
 
@@ -96,16 +101,31 @@ export interface PaperConfig {
   fitAlignment?: ImageAlignment; // alignment inside container
   canvasBackground?: string; // background color when letterboxed (e.g. '#ffffff', '#12151d', 'transparent')
   gridTarget?: GridTarget; // 'image' (grid covers the photo) or 'paper' (grid covers full paper sheet)
+  showRulerMargins?: boolean; // display physical ruler margin ticks on canvas
 }
 
 export type ExportFormat = 'png' | 'jpeg' | 'pdf';
 
+export type ExportMode = 'standard' | 'blank_grid' | 'side_by_side' | 'poster';
+
+export interface PosterSplitConfig {
+  rows: number; // e.g. 2, 3, 4
+  columns: number; // e.g. 2, 3, 4
+  overlapMm: number; // e.g. 10mm overlap for gluing
+}
+
 export interface ExportConfig {
   format: ExportFormat;
+  exportMode: ExportMode;
   includeGrid: boolean;
   includeLabels: boolean;
   includeScaleWatermark: boolean;
+  includeRulerMargins: boolean;
+  includeDrafterLegend: boolean;
   quality: number; // 0.1 to 1.0
+  posterConfig?: PosterSplitConfig;
+  drafterTitle?: string;
+  artistName?: string;
 }
 
 export interface ImageState {
