@@ -17,6 +17,7 @@ import {
   Activity,
   Layers,
   Palette,
+  PenTool,
 } from 'lucide-react';
 
 export interface ModesBentoCardProps {
@@ -55,6 +56,13 @@ const MODES = [
     badge: 'Pencil Sketch',
     desc: 'Silvery pencil midtones, fine shading & delicate detail',
     icon: Feather,
+  },
+  {
+    id: 'ink' as FilterMode,
+    title: 'Pen & Ink',
+    badge: 'GPU Ink',
+    desc: 'Contour line drawing & high-contrast ink sketch (WebGL)',
+    icon: PenTool,
   },
   {
     id: 'high_contrast' as FilterMode,
@@ -108,7 +116,7 @@ export function ModesBentoCard({
     >
       <div className="space-y-3 py-1">
         {/* Grid of Tonal Modes */}
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
           {MODES.map((item) => {
             const active = currentMode === item.id;
             const Icon = item.icon;

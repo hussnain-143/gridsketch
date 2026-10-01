@@ -3,6 +3,7 @@ import {
   FilterMode,
   TransformConfig,
 } from '@/types/editor';
+import { processWithWebGL } from './webgl-pipeline';
 
 /**
  * Applies geometric transformation (rotation, flips, crop) to source image
@@ -373,6 +374,50 @@ export function applyGraphiteSketch(
 }
 
 /**
+ * Pen & Ink Contour Sketch (CPU Fallback when WebGL is unavailable)
+ */
+export function applyInkSketch(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  adjustments?: AdjustmentConfig
+): void {
+  const pixelCount = width * height;
+  const lum = new Float32Array(pixelCount);
+
+  for (let i = 0; i < pixelCount; i++) {
+    const idx = i * 4;
+    lum[i] = (0.2126 * data[idx] + 0.7152 * data[idx + 1] + 0.0722 * data[idx + 2]) / 255;
+  }
+
+  const intensity = (adjustments?.modeIntensity ?? 100) / 100;
+  const copy = new Float32Array(lum);
+
+  for (let y = 1; y < height - 1; y++) {
+    const prevRow = (y - 1) * width;
+    const currRow = y * width;
+    const nextRow = (y + 1) * width;
+
+    for (let x = 1; x < width - 1; x++) {
+      const idx = currRow + x;
+      const gx =
+        -copy[prevRow + x - 1] - 2 * copy[currRow + x - 1] - copy[nextRow + x - 1] +
+        copy[prevRow + x + 1] + 2 * copy[currRow + x + 1] + copy[nextRow + x + 1];
+      const gy =
+        -copy[prevRow + x - 1] - 2 * copy[prevRow + x] - copy[prevRow + x + 1] +
+        copy[nextRow + x - 1] + 2 * copy[nextRow + x] + copy[nextRow + x + 1];
+      const edge = Math.hypot(gx, gy);
+      const inkVal = Math.max(0, Math.min(1, copy[idx] - edge * 1.5 * intensity));
+      const byteVal = Math.round(inkVal * 255);
+      const pixelIdx = idx * 4;
+      data[pixelIdx] = byteVal;
+      data[pixelIdx + 1] = byteVal;
+      data[pixelIdx + 2] = byteVal;
+    }
+  }
+}
+
+/**
  * Main pure image processing pipeline:
  * Takes transformed canvas and applies adjustments and active filter mode.
  */
@@ -381,6 +426,13 @@ export function processImageCanvas(
   mode: FilterMode,
   adjustments: AdjustmentConfig
 ): HTMLCanvasElement {
+  // 1. Hardware-accelerated GPU WebGL pass using glfx library
+  const webGLCanvas = processWithWebGL(sourceCanvas, mode, adjustments);
+  if (webGLCanvas) {
+    return webGLCanvas;
+  }
+
+  // 2. High-precision CPU 2D canvas fallback
   const width = sourceCanvas.width;
   const height = sourceCanvas.height;
 
@@ -544,6 +596,11 @@ export function processImageCanvas(
 
     case 'graphite': {
       applyGraphiteSketch(data, width, height, adjustments);
+      break;
+    }
+
+    case 'ink': {
+      applyInkSketch(data, width, height, adjustments);
       break;
     }
 

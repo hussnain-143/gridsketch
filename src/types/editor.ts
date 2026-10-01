@@ -3,6 +3,7 @@ export type FilterMode =
   | 'grayscale'
   | 'charcoal'
   | 'graphite'
+  | 'ink'
   | 'high_contrast';
 
 export type LabelMode = 'alphanumeric' | 'numeric' | 'none';

@@ -426,6 +426,8 @@ export default function EditorPage() {
       ? 'Master Charcoal'
       : mode === 'graphite'
       ? 'Fine Graphite'
+      : mode === 'ink'
+      ? 'Pen & Ink'
       : 'Chiaroscuro';
 
   return (
