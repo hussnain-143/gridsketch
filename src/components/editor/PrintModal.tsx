@@ -150,7 +150,7 @@ export function PrintModal({
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[rgba(125,211,252,0.12)] bg-[rgba(15,21,36,0.6)]">
+        <div className="no-print flex items-center justify-between p-4 border-b border-[rgba(125,211,252,0.12)] bg-[rgba(15,21,36,0.6)]">
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center"
@@ -181,7 +181,7 @@ export function PrintModal({
         </div>
 
         {/* Print Setup Bar */}
-        <div className="p-3 bg-[rgba(10,14,26,0.7)] border-b border-[rgba(125,211,252,0.12)] space-y-2 text-xs">
+        <div className="no-print p-3 bg-[rgba(10,14,26,0.7)] border-b border-[rgba(125,211,252,0.12)] space-y-2 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             {/* Print Mode Selector */}
             <div className="flex items-center gap-1.5 bg-[rgba(15,21,36,0.8)] p-1 rounded-xl border border-[rgba(125,211,252,0.14)]">
@@ -264,7 +264,7 @@ export function PrintModal({
 
           {/* Inline Error Banner */}
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 flex items-start gap-2.5 animate-in fade-in">
+            <div className="no-print p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 flex items-start gap-2.5 animate-in fade-in">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
               <div className="flex-1 text-[11px] leading-relaxed">
                 <span className="font-semibold block">Print Generation Interrupted</span>
@@ -275,7 +275,7 @@ export function PrintModal({
         </div>
 
         {/* Print Metadata & Action Bar */}
-        <div className="p-4 bg-[rgba(15,21,36,0.7)] border-t border-[rgba(125,211,252,0.12)] flex flex-wrap items-center justify-between gap-3">
+        <div className="no-print p-4 bg-[rgba(15,21,36,0.7)] border-t border-[rgba(125,211,252,0.12)] flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
             <div className="flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-[#7dd3fc]" />

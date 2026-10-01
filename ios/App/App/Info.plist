@@ -66,5 +66,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GridSketch requires access to your photo library to import drawing reference photos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>GridSketch requires permission to save exported calibrated drawings to your photo library.</string>
 </dict>
 </plist>

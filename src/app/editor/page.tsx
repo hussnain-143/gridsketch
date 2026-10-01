@@ -456,7 +456,7 @@ export default function EditorPage() {
         <aside
           role="status"
           aria-live="polite"
-          className={`fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-xs font-medium shadow-2xl flex items-center gap-2 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none ${
+          className={`no-print fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-xs font-medium shadow-2xl flex items-center gap-2 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none ${
             toast.type === 'error'
               ? 'bg-[#ef4444]/20 border-[#ef4444]/40 text-[#fca5a5] shadow-[0_0_20px_rgba(239,68,68,0.2)]'
               : toast.type === 'success'
@@ -469,7 +469,7 @@ export default function EditorPage() {
       )}
 
       {/* 1. Mobile Fixed-Canvas Layout with Bottom Edit Sheet Drawer (md:hidden) */}
-      <div className="md:hidden flex-1 relative flex flex-col overflow-hidden">
+      <div className="md:hidden flex-1 relative flex flex-col overflow-hidden no-print">
         {/* Full-bleed Fixed Canvas Viewport */}
         <div className="flex-1 w-full h-full relative overflow-hidden">
           <StudioCanvas
@@ -531,7 +531,7 @@ export default function EditorPage() {
       </div>
 
       {/* 2. Desktop Studio Viewport (hidden md:flex) */}
-      <div className="hidden md:flex flex-1 overflow-hidden relative">
+      <div className="hidden md:flex flex-1 overflow-hidden relative no-print">
         {layoutMode === 'bento' ? (
           /* Structural Bento Grid Dashboard: Asymmetric Multi-Column Content Cards */
           <BentoGridDashboard
