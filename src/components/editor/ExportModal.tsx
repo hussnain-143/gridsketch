@@ -27,10 +27,13 @@ import {
 import {
   createExportCanvas,
   downloadImage,
+  shareImage,
   downloadPdf,
-  canShareFiles,
+  sharePdf,
 } from '@/lib/image/export';
 import { calculatePaperGridScale } from '@/lib/image/paper-calculator';
+import { PermissionDialog, checkStoragePermissionGranted } from './PermissionDialog';
+import { Capacitor } from '@capacitor/core';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -75,7 +78,8 @@ export function ExportModal({
   const [exportSuccess, setExportSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [exportMethod, setExportMethod] = useState<'share' | 'download'>('download');
-  const isMobileShare = typeof window !== 'undefined' && canShareFiles();
+  const [savedPath, setSavedPath] = useState<string | null>(null);
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState<boolean>(false);
 
   if (!isOpen || !processedCanvas) return null;
 
@@ -105,7 +109,7 @@ export function ExportModal({
     });
   };
 
-  const handleExport = async () => {
+  const executeDownload = async () => {
     setIsExporting(true);
     setExportSuccess(false);
     setErrorMessage(null);
@@ -119,21 +123,70 @@ export function ExportModal({
         rawImageCanvas
       );
 
-      let result: { method: 'share' | 'download' };
+      let result: { method: 'download' | 'share'; filename: string; path?: string };
       if (config.format === 'pdf' || config.exportMode === 'poster') {
         result = await downloadPdf(exportCanvas, imageName, paper, grid, config);
       } else {
         result = await downloadImage(exportCanvas, imageName, config.format, config.quality);
       }
-      setExportMethod(result.method);
+      setExportMethod('download');
+      if (result.path) {
+        setSavedPath(result.path);
+      }
+      setExportSuccess(true);
+      setTimeout(() => {
+        onClose();
+        setExportSuccess(false);
+        setSavedPath(null);
+      }, 2000);
+    } catch (err: unknown) {
+      console.error('Download error:', err);
+      const msg = err instanceof Error ? err.message : 'Download failed. Please check device storage and permissions.';
+      setErrorMessage(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadClick = async () => {
+    if (Capacitor.isNativePlatform()) {
+      const granted = await checkStoragePermissionGranted();
+      if (!granted) {
+        setIsPermissionDialogOpen(true);
+        return;
+      }
+    }
+    await executeDownload();
+  };
+
+  const handleShareClick = async () => {
+    setIsExporting(true);
+    setExportSuccess(false);
+    setErrorMessage(null);
+    try {
+      const exportCanvas = createExportCanvas(
+        processedCanvas,
+        grid,
+        config,
+        paper,
+        currentFilterName,
+        rawImageCanvas
+      );
+
+      if (config.format === 'pdf' || config.exportMode === 'poster') {
+        await sharePdf(exportCanvas, imageName, paper, grid, config);
+      } else {
+        await shareImage(exportCanvas, imageName, config.format, config.quality);
+      }
+      setExportMethod('share');
       setExportSuccess(true);
       setTimeout(() => {
         onClose();
         setExportSuccess(false);
       }, 1500);
     } catch (err: unknown) {
-      console.error('Export error:', err);
-      const msg = err instanceof Error ? err.message : 'An error occurred during export. Please check device storage and permissions.';
+      console.error('Share error:', err);
+      const msg = err instanceof Error ? err.message : 'Share failed. Please check device storage.';
       setErrorMessage(msg);
     } finally {
       setIsExporting(false);
@@ -520,46 +573,56 @@ export function ExportModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-[rgba(125,211,252,0.12)] flex items-center justify-between gap-2 bg-[rgba(15,21,36,0.6)]">
+        <div className="p-4 border-t border-[#273444] flex flex-wrap items-center justify-between gap-2 bg-[#111820]">
           <div className="text-[10px] text-[#94a3b8] hidden sm:block">
-            {isMobileShare ? '✓ Native mobile share & save' : '✓ Studio 300 DPI high-res'}
+            {savedPath ? (
+              <span className="text-emerald-400 font-medium">✓ Saved: {savedPath}</span>
+            ) : (
+              '✓ Direct device storage & studio calibrated resolution'
+            )}
           </div>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto w-full sm:w-auto justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#38bdf8]/10 font-medium transition-colors"
+              className="px-3.5 py-2 rounded-xl text-xs text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#161e27] font-semibold transition-colors cursor-pointer"
             >
               Cancel
             </button>
+
+            {/* Explicit Share Button */}
             <button
-              onClick={handleExport}
+              type="button"
+              onClick={handleShareClick}
               disabled={isExporting || exportSuccess}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all hover:scale-[1.02] disabled:opacity-70 bg-[#38bdf8] hover:bg-[#0284c7] text-[#0b0f14] shadow-lg shadow-[#38bdf8]/25"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all bg-[#161e27] hover:bg-[#38bdf8]/15 border border-[#273444] hover:border-[#38bdf8]/40 text-[#38bdf8] active:scale-95 disabled:opacity-50 cursor-pointer"
+              title="Share via Android Sheet / Apps"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share</span>
+            </button>
+
+            {/* Primary Direct Download to Device Button */}
+            <button
+              type="button"
+              onClick={handleDownloadClick}
+              disabled={isExporting || exportSuccess}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-70 bg-[#38bdf8] hover:bg-[#0284c7] text-[#0b0f14] shadow-lg shadow-[#38bdf8]/25 cursor-pointer"
             >
               {isExporting ? (
                 <>
                   <div className="w-3.5 h-3.5 rounded-full border-2 border-[#0b0f14] border-t-transparent animate-spin" />
-                  <span>Preparing...</span>
+                  <span>Saving...</span>
                 </>
               ) : exportSuccess ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                  <span>{exportMethod === 'share' ? '✓ Saved & Shared!' : '✓ Downloaded!'}</span>
-                </>
-              ) : isMobileShare ? (
-                <>
-                  <Share2 className="w-4 h-4 stroke-[2.5]" />
-                  <span>
-                    Share / Save{' '}
-                    {config.exportMode === 'poster' ? 'POSTER PDF' : config.format.toUpperCase()}
-                  </span>
+                  <span>{exportMethod === 'share' ? '✓ Shared!' : '✓ Saved to Device!'}</span>
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4 stroke-[2.5]" />
                   <span>
-                    Download{' '}
-                    {config.exportMode === 'poster' ? 'POSTER PDF' : config.format.toUpperCase()}
+                    Download {config.exportMode === 'poster' ? 'POSTER PDF' : config.format.toUpperCase()}
                   </span>
                 </>
               )}
@@ -567,6 +630,16 @@ export function ExportModal({
           </div>
         </div>
       </div>
+
+      {/* Storage & Media Permission Dialog */}
+      <PermissionDialog
+        isOpen={isPermissionDialogOpen}
+        onClose={() => setIsPermissionDialogOpen(false)}
+        onGranted={() => {
+          setIsPermissionDialogOpen(false);
+          executeDownload();
+        }}
+      />
     </div>
   );
 }

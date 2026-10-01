@@ -20,6 +20,7 @@ import { MobileMenuDrawer } from '@/components/editor/MobileMenuDrawer';
 import { MobileEditDrawer, MobileEditTab } from '@/components/editor/MobileEditDrawer';
 import { ExportModal } from '@/components/editor/ExportModal';
 import { PrintModal } from '@/components/editor/PrintModal';
+import { PermissionDialog } from '@/components/editor/PermissionDialog';
 
 const DEFAULT_GRID: GridConfig = {
   rows: 8,
@@ -94,6 +95,7 @@ export default function EditorPage() {
   }, []);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isPrintOpen, setIsPrintOpen] = useState<boolean>(false);
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showPage, setShowPage] = useState<boolean>(true);
   const [isMovingImage, setIsMovingImage] = useState<boolean>(false);
@@ -484,7 +486,6 @@ export default function EditorPage() {
               setMobileEditTab(tab);
               setMobileEditDrawerOpen(true);
             }}
-            onOpenMenu={() => setMobileMenuDrawerOpen(true)}
           />
         )}
       </div>
@@ -630,6 +631,7 @@ export default function EditorPage() {
         onOpenExport={() => setIsExportOpen(true)}
         showCompare={showCompare}
         onToggleCompare={() => setShowCompare((prev) => !prev)}
+        onOpenPermissions={() => setIsPermissionDialogOpen(true)}
       />
 
       {/* Export Modal */}
@@ -653,6 +655,16 @@ export default function EditorPage() {
         imageName={imageName}
         grid={grid}
         paper={paper}
+      />
+
+      {/* Storage & Media Permission Dialog */}
+      <PermissionDialog
+        isOpen={isPermissionDialogOpen}
+        onClose={() => setIsPermissionDialogOpen(false)}
+        onGranted={() => {
+          setIsPermissionDialogOpen(false);
+          showToast('Storage permission granted', 'success');
+        }}
       />
     </div>
   );

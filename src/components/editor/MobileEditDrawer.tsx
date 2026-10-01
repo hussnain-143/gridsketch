@@ -20,7 +20,6 @@ import {
   SunMoon,
   Crop as CropIcon,
   ChevronDown,
-  MoreHorizontal,
 } from 'lucide-react';
 
 export type MobileEditTab = 'grid' | 'frame' | 'paper' | 'mode' | 'transform';
@@ -44,7 +43,6 @@ interface MobileEditDrawerProps {
   onToggleOpen: () => void;
   activeTab: MobileEditTab;
   onSelectTab: (tab: MobileEditTab) => void;
-  onOpenMenu?: () => void;
 }
 
 export function MobileEditDrawer({
@@ -66,7 +64,6 @@ export function MobileEditDrawer({
   onToggleOpen,
   activeTab,
   onSelectTab,
-  onOpenMenu,
 }: MobileEditDrawerProps) {
   const tabs: { id: MobileEditTab; label: string; icon: React.ElementType }[] = [
     { id: 'grid', label: 'Grid', icon: Grid3X3 },
@@ -191,8 +188,8 @@ export function MobileEditDrawer({
             )}
           </div>
         ) : (
-          /* Minimized Bottom Tool Dock: Grid | Frame | Paper | Mode | Transform | More */
-          <nav className="flex items-center justify-around px-1 py-1.5 pb-[max(env(safe-area-inset-bottom),14px)] bg-[#161e27]">
+          /* Minimized Bottom Tool Dock: Grid | Frame | Paper | Mode | Transform (Icon-only, active shows icon + name) */
+          <nav className="flex items-center justify-around px-2 py-1.5 pb-[max(env(safe-area-inset-bottom),14px)] bg-[#161e27] border-t border-[#273444]">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -206,38 +203,27 @@ export function MobileEditDrawer({
                       onSelectTab(tab.id);
                     }
                   }}
-                  className={`flex-1 min-w-[50px] min-h-[48px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-all active:scale-95 touch-manipulation ${
-                    isActive ? 'text-[#38bdf8]' : 'text-[#94a3b8] hover:text-[#f8fafc]'
-                  }`}
+                  className="flex-1 min-w-[54px] h-[52px] flex items-center justify-center rounded-xl transition-all active:scale-95 touch-manipulation cursor-pointer"
+                  title={tab.label}
+                  aria-label={tab.label}
                 >
-                  <div
-                    className={`p-1.5 rounded-xl transition-all ${
-                      isActive
-                        ? 'bg-[#38bdf8]/15 border border-[#38bdf8]/40 text-[#38bdf8]'
-                        : 'bg-[#111820] border border-[#273444] text-[#94a3b8]'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="truncate">{tab.label}</span>
+                  {isActive ? (
+                    <div className="flex flex-col items-center justify-center gap-1 animate-fade-in">
+                      <div className="w-8 h-8 rounded-xl bg-[#38bdf8]/15 border border-[#38bdf8]/50 text-[#38bdf8] flex items-center justify-center shadow-[0_0_12px_rgba(56,189,248,0.25)]">
+                        <Icon className="w-4 h-4 stroke-[2.2]" />
+                      </div>
+                      <span className="text-[10px] font-bold text-[#38bdf8] tracking-wider leading-none">
+                        {tab.label}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#111820] transition-colors">
+                      <Icon className="w-5 h-5 stroke-[1.8]" />
+                    </div>
+                  )}
                 </button>
               );
             })}
-
-            {/* 6. More (Secondary Actions Drawer) */}
-            {onOpenMenu && (
-              <button
-                onClick={onOpenMenu}
-                className="flex-1 min-w-[50px] min-h-[48px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#38bdf8] active:scale-95 touch-manipulation"
-                title="More Studio Actions"
-                aria-label="More Studio Actions"
-              >
-                <div className="p-1.5 rounded-xl bg-[#111820] border border-[#273444] text-[#94a3b8]">
-                  <MoreHorizontal className="w-4 h-4" />
-                </div>
-                <span className="truncate">More</span>
-              </button>
-            )}
           </nav>
         )}
       </div>

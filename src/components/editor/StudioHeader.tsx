@@ -118,10 +118,10 @@ export function StudioHeader({
         {/* Quick Upload Button (Both Mobile & Desktop) */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#161e27] hover:bg-[#38bdf8]/10 border border-[#273444] hover:border-[#38bdf8]/40 text-[#38bdf8] transition-all flex items-center gap-1.5 text-xs font-semibold active:scale-95 touch-manipulation cursor-pointer"
+          className="w-9 h-9 lg:w-auto lg:px-3 lg:py-1.5 rounded-xl bg-[#161e27] hover:bg-[#38bdf8]/10 border border-[#273444] hover:border-[#38bdf8]/40 text-[#38bdf8] transition-all flex items-center justify-center lg:gap-1.5 text-xs font-semibold active:scale-95 touch-manipulation cursor-pointer shrink-0"
           title="Upload Reference Photo"
         >
-          <Upload className="w-4 h-4 stroke-[2.2]" />
+          <Upload className="w-4 h-4 stroke-[2]" />
           <span className="hidden lg:inline">Upload</span>
         </button>
 
@@ -205,14 +205,14 @@ export function StudioHeader({
         {hasImage && (
           <button
             onClick={onToggleCompare}
-            className={`p-2 rounded-xl border transition-all active:scale-95 ${
+            className={`w-9 h-9 rounded-xl border transition-all active:scale-95 flex items-center justify-center shrink-0 ${
               showCompare
                 ? 'bg-[#38bdf8]/20 text-[#38bdf8] border-[#38bdf8]/50 shadow-[0_0_12px_rgba(56,189,248,0.25)]'
                 : 'bg-[#161e27] hover:bg-[#38bdf8]/10 text-[#38bdf8] border-[#273444] hover:border-[#38bdf8]/40'
             }`}
             title="Compare Before / After"
           >
-            <SplitSquareVertical className="w-4 h-4" />
+            <SplitSquareVertical className="w-4 h-4 stroke-[2]" />
           </button>
         )}
 
@@ -238,14 +238,14 @@ export function StudioHeader({
           </button>
         )}
 
-        {/* ── MOBILE MENU BUTTON ON THE RIGHT (Touch target 44×44px) ── */}
+        {/* ── MOBILE MENU BUTTON ON THE RIGHT (Exact same size as Upload button, decreased menu icon) ── */}
         <button
           onClick={onOpenMobileDrawer}
-          className="md:hidden w-11 h-11 rounded-xl border border-[#273444] bg-[#161e27] text-[#38bdf8] hover:border-[#38bdf8]/50 hover:bg-[#38bdf8]/15 active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation cursor-pointer shadow-sm"
+          className="md:hidden w-9 h-9 rounded-xl border border-[#273444] bg-[#161e27] text-[#38bdf8] hover:border-[#38bdf8]/50 hover:bg-[#38bdf8]/15 active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation cursor-pointer shadow-sm"
           title="Open Studio Menu"
           aria-label="Open Studio Menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-4 h-4 stroke-[2]" />
         </button>
       </div>
     </header>

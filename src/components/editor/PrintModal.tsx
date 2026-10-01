@@ -16,6 +16,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { createExportCanvas, downloadPdf } from '@/lib/image/export';
+import { PermissionDialog, checkStoragePermissionGranted } from './PermissionDialog';
+import { Capacitor } from '@capacitor/core';
 
 interface PrintModalProps {
   isOpen: boolean;
@@ -42,6 +44,7 @@ export function PrintModal({
   const [includeDrafterLegend, setIncludeDrafterLegend] = useState<boolean>(true);
   const [isPdfGenerating, setIsPdfGenerating] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState<boolean>(false);
 
   const scaleAnalysis = processedCanvas
     ? calculatePaperGridScale(
@@ -95,7 +98,7 @@ export function PrintModal({
     window.print();
   };
 
-  const handlePrintPdfDownload = async () => {
+  const executePdfDownload = async () => {
     setIsPdfGenerating(true);
     setErrorMessage(null);
     try {
@@ -135,6 +138,17 @@ export function PrintModal({
     } finally {
       setIsPdfGenerating(false);
     }
+  };
+
+  const handlePrintPdfDownload = async () => {
+    if (Capacitor.isNativePlatform()) {
+      const granted = await checkStoragePermissionGranted();
+      if (!granted) {
+        setIsPermissionDialogOpen(true);
+        return;
+      }
+    }
+    await executePdfDownload();
   };
 
   return (
@@ -306,6 +320,16 @@ export function PrintModal({
           </div>
         </div>
       </div>
+
+      {/* Storage & Media Permission Dialog */}
+      <PermissionDialog
+        isOpen={isPermissionDialogOpen}
+        onClose={() => setIsPermissionDialogOpen(false)}
+        onGranted={() => {
+          setIsPermissionDialogOpen(false);
+          executePdfDownload();
+        }}
+      />
     </div>
   );
 }

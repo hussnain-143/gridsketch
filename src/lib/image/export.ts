@@ -362,17 +362,53 @@ export function triggerFileDownload(url: string, filename: string): void {
 }
 
 /**
- * Download or Share canvas as PNG or JPG file.
- * On native mobile APK (Capacitor Android/iOS), saves directly to the device filesystem
- * and triggers Android native Share sheet so the user can save to Photos, Files, or Google Drive.
+ * Helper to obtain a Blob from the canvas across modern browsers and webviews.
+ */
+export function getCanvasBlob(
+  canvas: HTMLCanvasElement,
+  mimeType: string,
+  quality: number = 0.95
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    try {
+      if (typeof canvas.toBlob === 'function') {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else {
+              const dataUrl = canvas.toDataURL(mimeType, quality);
+              fetch(dataUrl)
+                .then((res) => res.blob())
+                .then(resolve)
+                .catch(reject);
+            }
+          },
+          mimeType,
+          quality
+        );
+      } else {
+        const dataUrl = canvas.toDataURL(mimeType, quality);
+        fetch(dataUrl)
+          .then((res) => res.blob())
+          .then(resolve)
+          .catch(reject);
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+/**
+ * Direct Download: Saves image directly to device filesystem (Documents & Downloads)
+ * without triggering the Share sheet.
  */
 export async function downloadImage(
   canvas: HTMLCanvasElement,
   filename: string,
   format: 'png' | 'jpeg',
-  quality: number = 0.95,
-  preferShareOnMobile: boolean = true
-): Promise<{ method: 'share' | 'download' }> {
+  quality: number = 0.95
+): Promise<{ method: 'download'; path?: string; filename: string }> {
   const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
   const ext = format === 'jpeg' ? 'jpg' : 'png';
   const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `_gridsketch.${ext}`;
@@ -383,113 +419,59 @@ export async function downloadImage(
       const dataUrl = canvas.toDataURL(mimeType, quality);
       const base64Data = dataUrl.split(',')[1];
 
-      // 1. Write file to Cache directory (guaranteed accessible for Android file sharing)
-      const cached = await Filesystem.writeFile({
-        path: cleanFilename,
-        data: base64Data,
-        directory: Directory.Cache,
-      });
+      let savedUri = cleanFilename;
 
-      // 2. Also write to Documents directory so file is saved locally on device
+      // 1. Write file to Documents directory (standard accessible storage on Android)
       try {
-        await Filesystem.writeFile({
+        const docRes = await Filesystem.writeFile({
+          path: `GridSketch/${cleanFilename}`,
+          data: base64Data,
+          directory: Directory.Documents,
+          recursive: true,
+        });
+        savedUri = docRes.uri || `Documents/GridSketch/${cleanFilename}`;
+      } catch {
+        const docRes = await Filesystem.writeFile({
           path: cleanFilename,
           data: base64Data,
           directory: Directory.Documents,
         });
-      } catch (docErr) {
-        console.warn('Could not save duplicate to Documents:', docErr);
+        savedUri = docRes.uri || `Documents/${cleanFilename}`;
       }
 
-      // 3. Open Android Native Share Intent (allowing user to save to Photos, Google Drive, Downloads, WhatsApp)
-      await Share.share({
-        title: 'GridSketch Reference',
-        text: `GridSketch reference: ${cleanFilename}`,
-        url: cached.uri,
-        dialogTitle: 'Save or Share Reference',
-      });
+      // 2. Also write to ExternalStorage Download folder for immediate Downloads visibility
+      try {
+        await Filesystem.writeFile({
+          path: `Download/${cleanFilename}`,
+          data: base64Data,
+          directory: Directory.ExternalStorage,
+          recursive: true,
+        });
+      } catch (e) {
+        console.warn('ExternalStorage copy skipped:', e);
+      }
+
+      // 3. Trigger web download in WebView as extra assurance
+      try {
+        triggerFileDownload(dataUrl, cleanFilename);
+      } catch {
+        // Fallback
+      }
 
       confetti({
-        particleCount: 40,
-        spread: 50,
+        particleCount: 50,
+        spread: 60,
         origin: { y: 0.8 },
       });
 
-      return { method: 'share' };
+      return { method: 'download', path: savedUri, filename: cleanFilename };
     } catch (capErr: unknown) {
-      if (
-        capErr instanceof Error &&
-        (capErr.name === 'AbortError' ||
-          capErr.message?.includes('canceled') ||
-          capErr.message?.includes('closed') ||
-          capErr.message?.includes('dismissed'))
-      ) {
-        return { method: 'share' };
-      }
-      console.warn('Capacitor native export failed, trying Web fallback:', capErr);
+      console.warn('Capacitor native download failed, trying Web fallback:', capErr);
     }
   }
 
-  // Helper to obtain a Blob from the canvas
-  const getBlob = (): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      try {
-        if (typeof canvas.toBlob === 'function') {
-          canvas.toBlob(
-            (blob) => {
-              if (blob) resolve(blob);
-              else {
-                const dataUrl = canvas.toDataURL(mimeType, quality);
-                fetch(dataUrl)
-                  .then((res) => res.blob())
-                  .then(resolve)
-                  .catch(reject);
-              }
-            },
-            mimeType,
-            quality
-          );
-        } else {
-          const dataUrl = canvas.toDataURL(mimeType, quality);
-          fetch(dataUrl)
-            .then((res) => res.blob())
-            .then(resolve)
-            .catch(reject);
-        }
-      } catch (err) {
-        reject(err);
-      }
-    });
-  };
-
-  const blob = await getBlob();
-
-  // Try Web Share API on mobile browsers
-  if (preferShareOnMobile && canShareFiles()) {
-    try {
-      const file = new File([blob], cleanFilename, { type: mimeType });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'GridSketch Reference',
-          text: `Calibrated drawing reference: ${cleanFilename}`,
-        });
-        confetti({
-          particleCount: 40,
-          spread: 50,
-          origin: { y: 0.8 },
-        });
-        return { method: 'share' };
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
-        return { method: 'share' };
-      }
-      console.warn('Web Share failed, falling back to direct download:', err);
-    }
-  }
-
-  // Fallback: standard file download via blob URL or data URL
+  // Web Browser Download fallback
+  const blob = await getCanvasBlob(canvas, mimeType, quality);
   try {
     const url = URL.createObjectURL(blob);
     triggerFileDownload(url, cleanFilename);
@@ -500,12 +482,71 @@ export async function downloadImage(
   }
 
   confetti({
-    particleCount: 40,
-    spread: 50,
+    particleCount: 50,
+    spread: 60,
     origin: { y: 0.8 },
   });
 
-  return { method: 'download' };
+  return { method: 'download', filename: cleanFilename };
+}
+
+/**
+ * Share Image: Explicitly opens the Android Native Share sheet or Web Share API.
+ */
+export async function shareImage(
+  canvas: HTMLCanvasElement,
+  filename: string,
+  format: 'png' | 'jpeg',
+  quality: number = 0.95
+): Promise<{ method: 'share'; filename: string }> {
+  const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+  const ext = format === 'jpeg' ? 'jpg' : 'png';
+  const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `_gridsketch.${ext}`;
+
+  if (Capacitor.isNativePlatform()) {
+    const dataUrl = canvas.toDataURL(mimeType, quality);
+    const base64Data = dataUrl.split(',')[1];
+    const cached = await Filesystem.writeFile({
+      path: cleanFilename,
+      data: base64Data,
+      directory: Directory.Cache,
+    });
+
+    await Share.share({
+      title: 'GridSketch Reference',
+      text: `GridSketch reference: ${cleanFilename}`,
+      url: cached.uri,
+      dialogTitle: 'Share Reference',
+    });
+
+    confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+    return { method: 'share', filename: cleanFilename };
+  }
+
+  // Web Share
+  const blob = await getCanvasBlob(canvas, mimeType, quality);
+  if (canShareFiles()) {
+    try {
+      const file = new File([blob], cleanFilename, { type: mimeType });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'GridSketch Reference',
+          text: `Calibrated drawing reference: ${cleanFilename}`,
+        });
+        confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+        return { method: 'share', filename: cleanFilename };
+      }
+    } catch (err) {
+      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+        return { method: 'share', filename: cleanFilename };
+      }
+    }
+  }
+
+  // Fallback to direct download
+  await downloadImage(canvas, filename, format, quality);
+  return { method: 'share', filename: cleanFilename };
 }
 
 /**
@@ -518,9 +559,8 @@ export async function downloadPosterPdf(
   filename: string,
   paper: PaperConfig,
   grid: GridConfig,
-  posterConfig?: PosterSplitConfig,
-  preferShareOnMobile: boolean = true
-): Promise<{ method: 'share' | 'download' }> {
+  posterConfig?: PosterSplitConfig
+): Promise<{ method: 'download' | 'share'; filename: string; path?: string }> {
   const { jsPDF } = await import('jspdf');
 
   const rows = Math.max(1, Math.min(6, posterConfig?.rows || 2));
@@ -648,7 +688,186 @@ export async function downloadPosterPdf(
 
   const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `_poster_${cols}x${rows}.pdf`;
 
-  // Native Mobile APK
+  // Native Mobile APK (Direct Save to Documents & Downloads without opening share sheet)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const dataUri = doc.output('datauristring');
+      const base64Data = dataUri.split(',')[1];
+
+      try {
+        await Filesystem.writeFile({
+          path: `GridSketch/${cleanFilename}`,
+          data: base64Data,
+          directory: Directory.Documents,
+          recursive: true,
+        });
+      } catch {
+        await Filesystem.writeFile({
+          path: cleanFilename,
+          data: base64Data,
+          directory: Directory.Documents,
+        });
+      }
+
+      try {
+        await Filesystem.writeFile({
+          path: `Download/${cleanFilename}`,
+          data: base64Data,
+          directory: Directory.ExternalStorage,
+          recursive: true,
+        });
+      } catch (e) {
+        console.warn('Documents save fallback:', e);
+      }
+
+      try {
+        doc.save(cleanFilename);
+      } catch {
+        // Ignore webview save
+      }
+
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+      return { method: 'download', filename: cleanFilename };
+    } catch (capErr: unknown) {
+      console.warn('Capacitor native poster export failed, using web fallback:', capErr);
+    }
+  }
+
+  // Direct Browser Download
+  doc.save(cleanFilename);
+  confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+  return { method: 'download', filename: cleanFilename };
+}
+
+/**
+ * Explicit Share action for Multi-Tile Poster PDF.
+ */
+export async function sharePosterPdf(
+  canvas: HTMLCanvasElement,
+  filename: string,
+  paper: PaperConfig,
+  grid: GridConfig,
+  posterConfig?: PosterSplitConfig
+): Promise<{ method: 'share'; filename: string }> {
+  const { jsPDF } = await import('jspdf');
+
+  const rows = Math.max(1, Math.min(6, posterConfig?.rows || 2));
+  const cols = Math.max(1, Math.min(6, posterConfig?.columns || 2));
+  const overlapMm = Math.max(5, Math.min(30, posterConfig?.overlapMm || 10));
+  const totalSheets = rows * cols;
+
+  const isLandscape = paper.orientation === 'landscape';
+  const format =
+    paper.preset === 'Custom'
+      ? [paper.customWidthMm || 210, paper.customHeightMm || 297]
+      : paper.preset.toLowerCase();
+
+  const doc = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: format,
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 12;
+
+  const maxW = pageWidth - margin * 2;
+  const maxH = pageHeight - margin * 2 - 14;
+
+  const tileW = canvas.width / cols;
+  const tileH = canvas.height / rows;
+
+  const offscreenTile = document.createElement('canvas');
+  offscreenTile.width = Math.round(tileW);
+  offscreenTile.height = Math.round(tileH);
+  const tileCtx = offscreenTile.getContext('2d');
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const sheetIndex = r * cols + c + 1;
+      if (sheetIndex > 1) {
+        doc.addPage(format, isLandscape ? 'landscape' : 'portrait');
+      }
+
+      if (tileCtx) {
+        tileCtx.clearRect(0, 0, offscreenTile.width, offscreenTile.height);
+        tileCtx.drawImage(
+          canvas,
+          Math.round(c * tileW),
+          Math.round(r * tileH),
+          Math.round(tileW),
+          Math.round(tileH),
+          0,
+          0,
+          offscreenTile.width,
+          offscreenTile.height
+        );
+      }
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text(
+        `GRIDSKETCH POSTER MULTI-TILE SYSTEM • SHEET ${sheetIndex} OF ${totalSheets}`,
+        margin,
+        margin - 2
+      );
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        `Tile [Row ${r + 1} of ${rows}, Col ${c + 1} of ${cols}] • Overlap: ${overlapMm} mm`,
+        pageWidth - margin,
+        margin - 2,
+        { align: 'right' }
+      );
+
+      const tileRatio = tileW / tileH;
+      let renderW = maxW;
+      let renderH = maxW / tileRatio;
+      if (renderH > maxH) {
+        renderH = maxH;
+        renderW = maxH * tileRatio;
+      }
+
+      const posX = (pageWidth - renderW) / 2;
+      const posY = margin + 4;
+
+      const tileDataUrl = offscreenTile.toDataURL('image/jpeg', 0.95);
+      doc.addImage(tileDataUrl, 'JPEG', posX, posY, renderW, renderH);
+
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineDashPattern([2, 2], 0);
+      doc.setLineWidth(0.3);
+      doc.rect(posX, posY, renderW, renderH);
+
+      const crossSize = 3;
+      doc.setLineDashPattern([], 0);
+      doc.setDrawColor(2, 132, 199);
+      doc.setLineWidth(0.4);
+
+      const corners = [
+        [posX, posY],
+        [posX + renderW, posY],
+        [posX, posY + renderH],
+        [posX + renderW, posY + renderH],
+      ];
+      for (const [cx, cy] of corners) {
+        doc.line(cx - crossSize, cy, cx + crossSize, cy);
+        doc.line(cx, cy - crossSize, cx, cy + crossSize);
+      }
+
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      const footerMsg = `✂ Cut along dashed lines • Align registration crosshairs (+) • Assembly: ${cols} across × ${rows} down`;
+      doc.text(footerMsg, pageWidth / 2, pageHeight - 4, { align: 'center' });
+    }
+  }
+
+  const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `_poster_${cols}x${rows}.pdf`;
+
   if (Capacitor.isNativePlatform()) {
     try {
       const dataUri = doc.output('datauristring');
@@ -660,25 +879,15 @@ export async function downloadPosterPdf(
         directory: Directory.Cache,
       });
 
-      try {
-        await Filesystem.writeFile({
-          path: cleanFilename,
-          data: base64Data,
-          directory: Directory.Documents,
-        });
-      } catch (e) {
-        console.warn('Documents save fallback:', e);
-      }
-
       await Share.share({
         title: 'GridSketch Poster PDF',
         text: `Multi-tile poster sheet (${cols}×${rows}): ${cleanFilename}`,
         url: cached.uri,
-        dialogTitle: 'Save or Share Multi-Tile Poster PDF',
+        dialogTitle: 'Share Multi-Tile Poster PDF',
       });
 
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-      return { method: 'share' };
+      confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+      return { method: 'share', filename: cleanFilename };
     } catch (capErr: unknown) {
       if (
         capErr instanceof Error &&
@@ -687,14 +896,12 @@ export async function downloadPosterPdf(
           capErr.message?.includes('closed') ||
           capErr.message?.includes('dismissed'))
       ) {
-        return { method: 'share' };
+        return { method: 'share', filename: cleanFilename };
       }
-      console.warn('Capacitor native poster export failed, using web fallback:', capErr);
     }
   }
 
-  // Web Share API
-  if (preferShareOnMobile && canShareFiles()) {
+  if (canShareFiles()) {
     try {
       const pdfBlob = doc.output('blob');
       const file = new File([pdfBlob], cleanFilename, { type: 'application/pdf' });
@@ -704,20 +911,19 @@ export async function downloadPosterPdf(
           title: 'GridSketch Poster Reference',
           text: `Printable multi-tile poster (${cols}×${rows}): ${cleanFilename}`,
         });
-        confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-        return { method: 'share' };
+        confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+        return { method: 'share', filename: cleanFilename };
       }
     } catch (err: unknown) {
       if (err instanceof Error && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
-        return { method: 'share' };
+        return { method: 'share', filename: cleanFilename };
       }
     }
   }
 
-  // Direct Browser Download
-  doc.save(cleanFilename);
-  confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-  return { method: 'download' };
+  // Fallback to direct download
+  const res = await downloadPosterPdf(canvas, filename, paper, grid, posterConfig);
+  return { method: 'share', filename: res.filename };
 }
 
 /**
@@ -730,9 +936,8 @@ export async function downloadPdf(
   filename: string,
   paper: PaperConfig,
   grid: GridConfig,
-  exportConfig?: ExportConfig,
-  preferShareOnMobile: boolean = true
-): Promise<{ method: 'share' | 'download' }> {
+  exportConfig?: ExportConfig
+): Promise<{ method: 'download' | 'share'; filename: string; path?: string }> {
   // If Poster Multi-Tile Split is requested, route to downloadPosterPdf
   if (exportConfig?.exportMode === 'poster') {
     return downloadPosterPdf(
@@ -740,8 +945,7 @@ export async function downloadPdf(
       filename,
       paper,
       grid,
-      exportConfig.posterConfig,
-      preferShareOnMobile
+      exportConfig.posterConfig
     );
   }
 
@@ -806,37 +1010,47 @@ export async function downloadPdf(
   const modeSuffix = isBlank ? '_blank_grid' : isDual ? '_dual_reference' : '';
   const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `${modeSuffix}_gridsketch.pdf`;
 
-  // Native Capacitor App (Android APK / iOS app)
+  // Native Capacitor App (Android APK / iOS app) - Direct Save to Documents & Downloads
   if (Capacitor.isNativePlatform()) {
     try {
       const dataUri = doc.output('datauristring');
       const base64Data = dataUri.split(',')[1];
 
-      // 1. Write file to Cache
-      const cached = await Filesystem.writeFile({
-        path: cleanFilename,
-        data: base64Data,
-        directory: Directory.Cache,
-      });
+      let savedUri = cleanFilename;
 
-      // 2. Also write to Documents
       try {
-        await Filesystem.writeFile({
+        const docRes = await Filesystem.writeFile({
+          path: `GridSketch/${cleanFilename}`,
+          data: base64Data,
+          directory: Directory.Documents,
+          recursive: true,
+        });
+        savedUri = docRes.uri || `Documents/GridSketch/${cleanFilename}`;
+      } catch {
+        const docRes = await Filesystem.writeFile({
           path: cleanFilename,
           data: base64Data,
           directory: Directory.Documents,
         });
-      } catch (docErr) {
-        console.warn('Could not save duplicate PDF to Documents:', docErr);
+        savedUri = docRes.uri || `Documents/${cleanFilename}`;
       }
 
-      // 3. Open Android Share Sheet
-      await Share.share({
-        title: 'GridSketch PDF Reference',
-        text: `GridSketch printable reference: ${cleanFilename}`,
-        url: cached.uri,
-        dialogTitle: 'Save or Share PDF Reference',
-      });
+      try {
+        await Filesystem.writeFile({
+          path: `Download/${cleanFilename}`,
+          data: base64Data,
+          directory: Directory.ExternalStorage,
+          recursive: true,
+        });
+      } catch (docErr) {
+        console.warn('Downloads save copy skipped:', docErr);
+      }
+
+      try {
+        doc.save(cleanFilename);
+      } catch {
+        // Ignore webview save
+      }
 
       confetti({
         particleCount: 50,
@@ -844,44 +1058,9 @@ export async function downloadPdf(
         origin: { y: 0.8 },
       });
 
-      return { method: 'share' };
+      return { method: 'download', filename: cleanFilename, path: savedUri };
     } catch (capErr: unknown) {
-      if (
-        capErr instanceof Error &&
-        (capErr.name === 'AbortError' ||
-          capErr.message?.includes('canceled') ||
-          capErr.message?.includes('closed') ||
-          capErr.message?.includes('dismissed'))
-      ) {
-        return { method: 'share' };
-      }
       console.warn('Capacitor native PDF export failed, trying Web fallback:', capErr);
-    }
-  }
-
-  // On mobile web / supported devices, try Web Share API with the PDF file
-  if (preferShareOnMobile && canShareFiles()) {
-    try {
-      const pdfBlob = doc.output('blob');
-      const file = new File([pdfBlob], cleanFilename, { type: 'application/pdf' });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'GridSketch PDF Reference',
-          text: `Printable drawing reference sheet: ${cleanFilename}`,
-        });
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.8 },
-        });
-        return { method: 'share' };
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
-        return { method: 'share' };
-      }
-      console.warn('PDF Web Share failed, falling back to doc.save:', err);
     }
   }
 
@@ -894,6 +1073,142 @@ export async function downloadPdf(
     origin: { y: 0.8 },
   });
 
-  return { method: 'download' };
+  return { method: 'download', filename: cleanFilename };
 }
+
+/**
+ * Explicit Share action for single-sheet PDF reference.
+ */
+export async function sharePdf(
+  canvas: HTMLCanvasElement,
+  filename: string,
+  paper: PaperConfig,
+  grid: GridConfig,
+  exportConfig?: ExportConfig
+): Promise<{ method: 'share'; filename: string }> {
+  if (exportConfig?.exportMode === 'poster') {
+    return sharePosterPdf(
+      canvas,
+      filename,
+      paper,
+      grid,
+      exportConfig.posterConfig
+    );
+  }
+
+  const { jsPDF } = await import('jspdf');
+
+  const isLandscape = paper.orientation === 'landscape';
+  const format =
+    paper.preset === 'Custom'
+      ? [paper.customWidthMm || 200, paper.customHeightMm || 200]
+      : paper.preset.toLowerCase();
+
+  const doc = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: format,
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+
+  const maxW = pageWidth - margin * 2;
+  const maxH = pageHeight - margin * 2 - 12;
+
+  const imgRatio = canvas.width / canvas.height;
+  let renderW = maxW;
+  let renderH = maxW / imgRatio;
+
+  if (renderH > maxH) {
+    renderH = maxH;
+    renderW = maxH * imgRatio;
+  }
+
+  const posX = (pageWidth - renderW) / 2;
+  const posY = margin + 6;
+
+  const isBlank = exportConfig?.exportMode === 'blank_grid';
+  const isDual = exportConfig?.exportMode === 'side_by_side';
+  const headerTitle = isBlank
+    ? 'GridSketch — Matching Blank Grid Sheet (Calibrated)'
+    : isDual
+    ? 'GridSketch — Side-by-Side Dual Reference (Color & Grid)'
+    : 'GridSketch — Digital Drawing Assistant Reference';
+
+  doc.setFontSize(10);
+  doc.setTextColor(80, 80, 80);
+  doc.text(headerTitle, margin, margin);
+
+  const imgDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  doc.addImage(imgDataUrl, 'JPEG', posX, posY, renderW, renderH);
+
+  const scaleInfo = calculatePaperGridScale(canvas.width, canvas.height, grid.rows, grid.columns, paper, 0, grid);
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 100, 100);
+  const footerText = `${scaleInfo.rulerSummary} | Printable size: ${renderW.toFixed(1)} × ${renderH.toFixed(1)} mm`;
+  doc.text(footerText, pageWidth / 2, pageHeight - 5, { align: 'center' });
+
+  const modeSuffix = isBlank ? '_blank_grid' : isDual ? '_dual_reference' : '';
+  const cleanFilename = filename.replace(/\.[^/.]+$/, '') + `${modeSuffix}_gridsketch.pdf`;
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const dataUri = doc.output('datauristring');
+      const base64Data = dataUri.split(',')[1];
+
+      const cached = await Filesystem.writeFile({
+        path: cleanFilename,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      await Share.share({
+        title: 'GridSketch PDF Reference',
+        text: `GridSketch printable reference: ${cleanFilename}`,
+        url: cached.uri,
+        dialogTitle: 'Share PDF Reference',
+      });
+
+      confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+      return { method: 'share', filename: cleanFilename };
+    } catch (capErr: unknown) {
+      if (
+        capErr instanceof Error &&
+        (capErr.name === 'AbortError' ||
+          capErr.message?.includes('canceled') ||
+          capErr.message?.includes('closed') ||
+          capErr.message?.includes('dismissed'))
+      ) {
+        return { method: 'share', filename: cleanFilename };
+      }
+    }
+  }
+
+  if (canShareFiles()) {
+    try {
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], cleanFilename, { type: 'application/pdf' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'GridSketch PDF Reference',
+          text: `Printable drawing reference sheet: ${cleanFilename}`,
+        });
+        confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+        return { method: 'share', filename: cleanFilename };
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+        return { method: 'share', filename: cleanFilename };
+      }
+    }
+  }
+
+  // Fallback to direct download
+  const res = await downloadPdf(canvas, filename, paper, grid, exportConfig);
+  return { method: 'share', filename: res.filename };
+}
+
 

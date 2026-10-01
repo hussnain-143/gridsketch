@@ -10,6 +10,7 @@ import {
   Printer,
   Download,
   SplitSquareVertical,
+  ShieldCheck,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
@@ -28,6 +29,7 @@ interface MobileMenuDrawerProps {
   onOpenExport: () => void;
   showCompare: boolean;
   onToggleCompare: () => void;
+  onOpenPermissions?: () => void;
 }
 
 export function MobileMenuDrawer({
@@ -45,6 +47,7 @@ export function MobileMenuDrawer({
   onOpenExport,
   showCompare,
   onToggleCompare,
+  onOpenPermissions,
 }: MobileMenuDrawerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -213,6 +216,20 @@ export function MobileMenuDrawer({
               <Printer className="w-4 h-4 text-[#38bdf8]" />
               <span>Print Scale Reference Sheet</span>
             </button>
+
+            {onOpenPermissions && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenPermissions();
+                  onClose();
+                }}
+                className="w-full min-h-[46px] p-2.5 rounded-xl bg-[#111820] hover:bg-[#38bdf8]/10 border border-[#273444] text-[#f8fafc] text-xs flex items-center gap-2.5 transition-all touch-manipulation cursor-pointer active:scale-[0.98]"
+              >
+                <ShieldCheck className="w-4 h-4 text-[#38bdf8]" />
+                <span>Storage & Media Permissions</span>
+              </button>
+            )}
 
             <button
               type="button"
