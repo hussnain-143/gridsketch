@@ -75,7 +75,7 @@ export function StudioHeader({
 
   return (
     <header
-      className="no-print pt-[max(env(safe-area-inset-top),20px)] min-h-[58px] px-3 sm:px-5 flex items-center justify-between select-none z-30 shrink-0 relative"
+      className="no-print pt-[max(env(safe-area-inset-top),20px)] sm:pt-0 min-h-[58px] px-3 sm:px-5 flex items-center justify-between select-none z-30 shrink-0 relative"
       style={{
         background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 0%, rgba(15, 21, 36, 0.75) 40%, rgba(10, 14, 26, 0.85) 100%)',
         backdropFilter: 'blur(28px) saturate(200%)',

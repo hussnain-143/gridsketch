@@ -172,6 +172,205 @@ function applySharpen(
   }
 }
 
+/**
+ * Fast local luminance blur using separable 1D passes
+ */
+function computeLuminanceBlur(
+  lum: Float32Array,
+  width: number,
+  height: number,
+  radius: number
+): Float32Array {
+  const pixelCount = width * height;
+  const out = new Float32Array(pixelCount);
+  const temp = new Float32Array(pixelCount);
+
+  // Horizontal pass
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      let count = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const nx = x + k;
+        if (nx >= 0 && nx < width) {
+          sum += lum[rowOffset + nx];
+          count++;
+        }
+      }
+      temp[rowOffset + x] = sum / count;
+    }
+  }
+
+  // Vertical pass
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      let sum = 0;
+      let count = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const ny = y + k;
+        if (ny >= 0 && ny < height) {
+          sum += temp[ny * width + x];
+          count++;
+        }
+      }
+      out[y * width + x] = sum / count;
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Fine Art Charcoal Drawing Filter:
+ * Recreates the dramatic sculptural lighting and rich textural depth of master charcoal drawings:
+ * - Deep, velvety blacks in shadows
+ * - Luminous, brilliant highlights on facial planes and specular points (sweat drops, earrings, nose bridge)
+ * - Enhanced high-frequency micro-textures (pores, stubble, wrinkles, fabric weave)
+ * - Authentic paper-tooth midtone texture
+ */
+export function applyCharcoalDrawing(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  adjustments?: AdjustmentConfig
+): void {
+  const pixelCount = width * height;
+  const lum = new Float32Array(pixelCount);
+
+  // 1. Extract base luminance
+  for (let i = 0; i < pixelCount; i++) {
+    const idx = i * 4;
+    lum[i] = (0.2126 * data[idx] + 0.7152 * data[idx + 1] + 0.0722 * data[idx + 2]) / 255;
+  }
+
+  // 2. Compute smooth local background luminance using separable box blur
+  const blurRadius = Math.max(3, Math.min(10, Math.round(Math.min(width, height) * 0.01)));
+  const baseBlur = computeLuminanceBlur(lum, width, height, blurRadius);
+
+  const intensity = (adjustments?.modeIntensity ?? 100) / 100;
+  const textureScale = (adjustments?.textureDetail ?? 75) / 50;
+
+  // 3. Process each pixel: dramatic charcoal curve + boosted micro-texture + tooth grain
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x++) {
+      const i = rowOffset + x;
+      const idx = i * 4;
+
+      const rawL = lum[i];
+      const baseL = baseBlur[i];
+
+      // High-frequency detail (skin pores, stubble, fabric weave, specular edges)
+      const detail = rawL - baseL;
+
+      // Sculpted Charcoal S-Curve on base luminance:
+      // Deepens shadows into velvety charcoal black, lifts highlights cleanly
+      let curvedBase: number;
+      if (baseL < 0.35) {
+        // Deep shadow compression: smooth plunge to rich black
+        curvedBase = Math.pow(baseL / 0.35, 1.45) * 0.20;
+      } else if (baseL > 0.65) {
+        // Luminous highlight expansion: glowing paper white
+        const normH = (baseL - 0.65) / 0.35;
+        curvedBase = 0.55 + Math.pow(normH, 0.78) * 0.45;
+      } else {
+        // Sculpted anatomical midtones with S-curve contrast
+        const t = (baseL - 0.35) / 0.30;
+        const smoothT = t * t * (3 - 2 * t);
+        curvedBase = 0.20 + smoothT * (0.55 - 0.20);
+      }
+
+      // Blend between natural luminance and curved base according to intensity slider
+      const targetBase = rawL * (1 - intensity) + curvedBase * intensity;
+
+      // Dynamic detail amplification scaled by textureDetail slider
+      let detailGain = 2.4 * textureScale;
+      if (baseL > 0.60 && detail > 0) {
+        detailGain = 3.2 * textureScale; // Extra pop for specular highlights!
+      } else if (baseL < 0.22) {
+        detailGain = 1.3 * textureScale; // Preserve deep shadow mood
+      }
+
+      let finalL = targetBase + detail * detailGain * intensity;
+
+      // Authentic charcoal paper tooth (organic grain concentrated in midtones)
+      const midtoneWeight = Math.sin(Math.PI * Math.min(1, Math.max(0, finalL)));
+      if (midtoneWeight > 0.1 && intensity > 0.1) {
+        const tooth = ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1);
+        finalL += (tooth - 0.5) * 0.04 * midtoneWeight * intensity;
+      }
+
+      const byteVal = Math.min(255, Math.max(0, Math.round(finalL * 255)));
+      data[idx] = byteVal;
+      data[idx + 1] = byteVal;
+      data[idx + 2] = byteVal;
+    }
+  }
+}
+
+/**
+ * Fine Graphite Pencil Sketch Filter:
+ * Recreates the silvery tones and delicate crosshatch tooth of graphite pencil drawings:
+ * - Smooth, extended midtone values for soft facial planes
+ * - Luminous paper highlights
+ * - Fine-grained pencil texture
+ */
+export function applyGraphiteSketch(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  adjustments?: AdjustmentConfig
+): void {
+  const pixelCount = width * height;
+  const lum = new Float32Array(pixelCount);
+
+  for (let i = 0; i < pixelCount; i++) {
+    const idx = i * 4;
+    lum[i] = (0.2126 * data[idx] + 0.7152 * data[idx + 1] + 0.0722 * data[idx + 2]) / 255;
+  }
+
+  const blurRadius = Math.max(2, Math.min(8, Math.round(Math.min(width, height) * 0.008)));
+  const baseBlur = computeLuminanceBlur(lum, width, height, blurRadius);
+
+  const intensity = (adjustments?.modeIntensity ?? 100) / 100;
+  const textureScale = (adjustments?.textureDetail ?? 75) / 50;
+
+  for (let y = 0; y < height; y++) {
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x++) {
+      const i = rowOffset + x;
+      const idx = i * 4;
+
+      const rawL = lum[i];
+      const baseL = baseBlur[i];
+      const detail = rawL - baseL;
+
+      // Graphite gentle S-curve (silvery pencil gradation, non-harsh shadows)
+      const norm = baseL;
+      const curvedBase =
+        norm < 0.5
+          ? Math.pow(norm * 2, 1.25) * 0.45
+          : 0.45 + (1 - Math.pow((1 - norm) * 2, 1.25)) * 0.55;
+
+      const shapedBase = rawL * (1 - intensity) + curvedBase * intensity;
+
+      let finalL = shapedBase + detail * 1.85 * textureScale * intensity;
+
+      // Fine pencil paper grain in midtones
+      const midtone = Math.sin(Math.PI * Math.min(1, Math.max(0, finalL)));
+      if (midtone > 0.1 && intensity > 0.1) {
+        const grain = (((Math.sin(x * 37.1 + y * 91.7) * 23421.631) % 1) - 0.5) * 0.03 * midtone * intensity;
+        finalL += grain;
+      }
+
+      const byteVal = Math.min(255, Math.max(0, Math.round(finalL * 255)));
+      data[idx] = byteVal;
+      data[idx + 1] = byteVal;
+      data[idx + 2] = byteVal;
+    }
+  }
+}
 
 /**
  * Main pure image processing pipeline:
@@ -338,45 +537,20 @@ export function processImageCanvas(
       break;
     }
 
-    case 'value_study': {
-      // 5-Step Academic Value Scale (Highlight, Light Halftone, Dark Halftone, Shadow, Core Black)
-      // Teaches students the Munsell/Reilly plane shading masses
-      const valueLut = new Uint8Array(256);
-      for (let v = 0; v < 256; v++) {
-        if (v < 50) {
-          valueLut[v] = 20; // Core Black
-        } else if (v < 100) {
-          valueLut[v] = 75; // Form Shadow
-        } else if (v < 160) {
-          valueLut[v] = 135; // Dark Halftone
-        } else if (v < 215) {
-          valueLut[v] = 195; // Light Halftone
-        } else {
-          valueLut[v] = 250; // Highlight
-        }
-      }
-
-      for (let i = 0; i < data.length; i += 4) {
-        const rawGray =
-          (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) | 0;
-        const val = valueLut[rawGray];
-        data[i] = val;
-        data[i + 1] = val;
-        data[i + 2] = val;
-      }
+    case 'charcoal': {
+      applyCharcoalDrawing(data, width, height, adjustments);
       break;
     }
 
-    case 'notan': {
-      // 2-Tone Notan Graphic Study (Pure Light vs Shadow Masses)
-      for (let i = 0; i < data.length; i += 4) {
-        const rawGray =
-          (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) | 0;
-        const val = rawGray >= 128 ? 250 : 25;
-        data[i] = val;
-        data[i + 1] = val;
-        data[i + 2] = val;
-      }
+    case 'graphite': {
+      applyGraphiteSketch(data, width, height, adjustments);
+      break;
+    }
+
+    // Backwards-compatibility fallback if previous session had 'value_study' or 'notan'
+    case 'value_study' as FilterMode:
+    case 'notan' as FilterMode: {
+      applyCharcoalDrawing(data, width, height, adjustments);
       break;
     }
   }

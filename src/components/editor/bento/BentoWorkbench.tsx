@@ -6,6 +6,7 @@ import {
   PaperConfig,
   FilterMode,
   TransformConfig,
+  AdjustmentConfig,
 } from '@/types/editor';
 import { ImageFitBentoCard } from './ImageFitBentoCard';
 import { GridBlueprintBentoCard } from './GridBlueprintBentoCard';
@@ -30,6 +31,8 @@ interface BentoWorkbenchProps {
   onPaperChange: (updates: Partial<PaperConfig>) => void;
   mode: FilterMode;
   onModeChange: (newMode: FilterMode) => void;
+  adjustments?: AdjustmentConfig;
+  onAdjustmentsChange?: (updates: Partial<AdjustmentConfig>) => void;
   transform: TransformConfig;
   onTransformChange: (updates: Partial<TransformConfig>) => void;
   imageWidth: number;
@@ -52,6 +55,8 @@ export function BentoWorkbench({
   onPaperChange,
   mode,
   onModeChange,
+  adjustments,
+  onAdjustmentsChange,
   transform,
   onTransformChange,
   imageWidth,
@@ -166,6 +171,7 @@ export function BentoWorkbench({
             rows={grid.rows}
             columns={grid.columns}
             onChange={onPaperChange}
+            grid={grid}
           />
         )}
 
@@ -174,6 +180,8 @@ export function BentoWorkbench({
           <ModesBentoCard
             currentMode={mode}
             onSelectMode={onModeChange}
+            adjustments={adjustments}
+            onAdjustmentsChange={onAdjustmentsChange}
           />
         )}
 

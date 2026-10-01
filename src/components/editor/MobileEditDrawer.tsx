@@ -6,6 +6,7 @@ import {
   PaperConfig,
   FilterMode,
   TransformConfig,
+  AdjustmentConfig,
 } from '@/types/editor';
 import { ImageFitBentoCard } from './bento/ImageFitBentoCard';
 import { GridBlueprintBentoCard } from './bento/GridBlueprintBentoCard';
@@ -31,6 +32,8 @@ interface MobileEditDrawerProps {
   onPaperChange: (updates: Partial<PaperConfig>) => void;
   mode: FilterMode;
   onModeChange: (newMode: FilterMode) => void;
+  adjustments?: AdjustmentConfig;
+  onAdjustmentsChange?: (updates: Partial<AdjustmentConfig>) => void;
   transform: TransformConfig;
   onTransformChange: (updates: Partial<TransformConfig>) => void;
   imageWidth: number;
@@ -51,6 +54,8 @@ export function MobileEditDrawer({
   onPaperChange,
   mode,
   onModeChange,
+  adjustments,
+  onAdjustmentsChange,
   transform,
   onTransformChange,
   imageWidth,
@@ -169,6 +174,7 @@ export function MobileEditDrawer({
                 rows={grid.rows}
                 columns={grid.columns}
                 onChange={onPaperChange}
+                grid={grid}
               />
             )}
 
@@ -176,6 +182,8 @@ export function MobileEditDrawer({
               <ModesBentoCard
                 currentMode={mode}
                 onSelectMode={onModeChange}
+                adjustments={adjustments}
+                onAdjustmentsChange={onAdjustmentsChange}
               />
             )}
 

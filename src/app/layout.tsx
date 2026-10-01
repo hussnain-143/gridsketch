@@ -20,10 +20,28 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "GridSketch — Digital Drawing Assistant for Artists",
   description:
-    "Transform any photo into a calibrated drawing reference. Customizable grids, diagonal crosses, grayscale, and physical paper ruler scaling.",
+    "Transform any photo into a calibrated drawing reference. Customizable grids, diagonal crosses, continuous tonal values, and physical paper ruler scaling.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "GridSketch",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "GridSketch",
+  },
   icons: {
     icon: "/favicon.svg",
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "GridSketch — Digital Drawing Assistant for Artists",
+    description: "Transform any photo into a calibrated drawing reference. Precision grids, continuous tonal values & physical paper ruler scaling.",
+    siteName: "GridSketch",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GridSketch — Digital Drawing Assistant for Artists",
+    description: "Transform any photo into a calibrated drawing reference. Precision grids & drawing modes.",
   },
 };
 

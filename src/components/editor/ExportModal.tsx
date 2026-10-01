@@ -22,6 +22,7 @@ import {
   FileSpreadsheet,
   Scissors,
   Bookmark,
+  AlertCircle,
 } from 'lucide-react';
 import {
   createExportCanvas,
@@ -72,6 +73,7 @@ export function ExportModal({
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [exportMethod, setExportMethod] = useState<'share' | 'download'>('download');
   const isMobileShare = typeof window !== 'undefined' && canShareFiles();
 
@@ -82,10 +84,13 @@ export function ExportModal({
     processedCanvas.height,
     grid.rows,
     grid.columns,
-    paper
+    paper,
+    0,
+    grid
   );
 
   const handleExportModeChange = (mode: ExportMode) => {
+    setErrorMessage(null);
     setConfig((prev) => {
       let format = prev.format;
       // Multi-tile poster requires PDF
@@ -103,6 +108,7 @@ export function ExportModal({
   const handleExport = async () => {
     setIsExporting(true);
     setExportSuccess(false);
+    setErrorMessage(null);
     try {
       const exportCanvas = createExportCanvas(
         processedCanvas,
@@ -125,9 +131,10 @@ export function ExportModal({
         onClose();
         setExportSuccess(false);
       }, 1500);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Export error:', err);
-      alert('An error occurred during export.');
+      const msg = err instanceof Error ? err.message : 'An error occurred during export. Please check device storage and permissions.';
+      setErrorMessage(msg);
     } finally {
       setIsExporting(false);
     }
@@ -511,6 +518,17 @@ export function ExportModal({
               </span>
             </div>
           </div>
+
+          {/* Inline Error Banner */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 flex items-start gap-2.5 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div className="flex-1 text-[11px] leading-relaxed">
+                <span className="font-semibold block">Export Interrupted</span>
+                <span>{errorMessage}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

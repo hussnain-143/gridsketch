@@ -1,4 +1,5 @@
-import { GridConfig } from '@/types/editor';
+import { GridConfig, PaperConfig } from '@/types/editor';
+import { PAPER_SIZES } from './paper-calculator';
 
 /**
  * Converts zero-indexed column number to Excel-style alphabet label (0 -> A, 25 -> Z, 26 -> AA)
@@ -13,6 +14,140 @@ export function getColumnLabel(index: number): string {
   return label;
 }
 
+export interface GridCoordinates {
+  colX: number[];
+  rowY: number[];
+  isExact: boolean;
+  cellPitchX: number;
+  cellPitchY: number;
+  remainderWidth: number;
+  remainderHeight: number;
+}
+
+/**
+ * Computes exact pixel boundaries for columns and rows.
+ * In exact physical size mode, all primary cells have the EXACT specified dimension,
+ * while the last column and row absorb the remaining paper/canvas space.
+ */
+export function computeGridCoordinates(
+  width: number,
+  height: number,
+  grid: GridConfig,
+  paper?: PaperConfig
+): GridCoordinates {
+  const { rows, columns, lockAspectRatio, gridMode, cellSize, sizeUnit } = grid;
+
+  if (rows <= 0 || columns <= 0) {
+    return {
+      colX: [0],
+      rowY: [0],
+      isExact: false,
+      cellPitchX: 0,
+      cellPitchY: 0,
+      remainderWidth: 0,
+      remainderHeight: 0,
+    };
+  }
+
+  const isExactMode =
+    (gridMode === 'size' || !!grid.exactCellSize) &&
+    typeof cellSize === 'number' &&
+    cellSize > 0;
+
+  if (isExactMode) {
+    let cellPx = 0;
+    if (sizeUnit === 'px') {
+      cellPx = cellSize;
+    } else {
+      let targetMm = cellSize;
+      if (sizeUnit === 'cm') targetMm = cellSize * 10;
+      else if (sizeUnit === 'in') targetMm = cellSize * 25.4;
+
+      let paperW = 210;
+      if (paper) {
+        const isLandscape = paper.orientation === 'landscape';
+        const baseW =
+          paper.preset === 'Custom'
+            ? Math.max(10, paper.customWidthMm || 200)
+            : PAPER_SIZES[paper.preset]?.widthMm ?? 210;
+        const baseH =
+          paper.preset === 'Custom'
+            ? Math.max(10, paper.customHeightMm || 200)
+            : PAPER_SIZES[paper.preset]?.heightMm ?? 297;
+        paperW = isLandscape ? Math.max(baseW, baseH) : Math.min(baseW, baseH);
+      }
+      const pxPerMm = width / Math.max(1, paperW);
+      cellPx = targetMm * pxPerMm;
+    }
+
+    if (cellPx > 0) {
+      const colX: number[] = [];
+      for (let c = 0; c < columns; c++) {
+        colX.push(Math.round(c * cellPx));
+      }
+      colX.push(width);
+
+      const rowY: number[] = [];
+      for (let r = 0; r < rows; r++) {
+        rowY.push(Math.round(r * cellPx));
+      }
+      rowY.push(height);
+
+      const remainderWidth = width - (columns - 1) * cellPx;
+      const remainderHeight = height - (rows - 1) * cellPx;
+
+      return {
+        colX,
+        rowY,
+        isExact: true,
+        cellPitchX: cellPx,
+        cellPitchY: cellPx,
+        remainderWidth,
+        remainderHeight,
+      };
+    }
+  }
+
+  // Fallback: standard division mode (when in 'number' / count mode)
+  let cellWidth = width / columns;
+  let cellHeight = height / rows;
+  let startX = 0;
+  let startY = 0;
+
+  if (lockAspectRatio) {
+    const rawRatio = (width / columns) / (height / rows);
+    if (rawRatio >= 0.94 && rawRatio <= 1.06) {
+      cellWidth = width / columns;
+      cellHeight = height / rows;
+    } else {
+      const squareSize = Math.min(width / columns, height / rows);
+      cellWidth = squareSize;
+      cellHeight = squareSize;
+      startX = Math.max(0, (width - columns * cellWidth) / 2);
+      startY = Math.max(0, (height - rows * cellHeight) / 2);
+    }
+  }
+
+  const colX: number[] = [];
+  for (let c = 0; c <= columns; c++) {
+    colX.push(Math.round(startX + c * cellWidth));
+  }
+  const rowY: number[] = [];
+  for (let r = 0; r <= rows; r++) {
+    rowY.push(Math.round(startY + r * cellHeight));
+  }
+
+  return {
+    colX,
+    rowY,
+    isExact: false,
+    cellPitchX: cellWidth,
+    cellPitchY: cellHeight,
+    remainderWidth: cellWidth,
+    remainderHeight: cellHeight,
+  };
+}
+
 /**
  * Draws the grid overlay, center crosshair, diagonals, subdivisions, and labels
  * onto the target 2D canvas context.
@@ -22,7 +157,8 @@ export function drawGridOverlay(
   width: number,
   height: number,
   grid: GridConfig,
-  renderLabels: boolean = true
+  renderLabels: boolean = true,
+  paper?: PaperConfig
 ): void {
   const {
     rows,
@@ -37,60 +173,44 @@ export function drawGridOverlay(
     showDiagonals,
     showFullDiagonals,
     subdivisions,
-    lockAspectRatio,
   } = grid;
 
   if (rows <= 0 || columns <= 0 || opacity <= 0) return;
 
-  // When lockAspectRatio is enabled, guarantee perfect 1:1 square cells
-  let cellWidth = width / columns;
-  let cellHeight = height / rows;
-  let startX = 0;
-  let startY = 0;
-
-  if (lockAspectRatio) {
-    // If the cell aspect ratio is already close to square (within 6%),
-    // stretch to cover full width/height so no empty slivers or gaps appear on borders
-    const rawRatio = (width / columns) / (height / rows);
-    if (rawRatio >= 0.94 && rawRatio <= 1.06) {
-      cellWidth = width / columns;
-      cellHeight = height / rows;
-      startX = 0;
-      startY = 0;
-    } else {
-      const cellSize = Math.min(width / columns, height / rows);
-      cellWidth = cellSize;
-      cellHeight = cellSize;
-      startX = Math.max(0, (width - columns * cellWidth) / 2);
-      startY = Math.max(0, (height - rows * cellHeight) / 2);
-    }
-  }
+  const { colX, rowY } = computeGridCoordinates(width, height, grid, paper);
 
   ctx.save();
   ctx.globalAlpha = opacity;
 
   // 1. Draw Minor Subdivisions if enabled
   if (subdivisions > 1) {
-    const subColWidth = cellWidth / subdivisions;
-    const subRowHeight = cellHeight / subdivisions;
-
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(0.75, thickness * 0.4);
     ctx.setLineDash([4, 4]);
 
     ctx.beginPath();
-    for (let c = 0; c <= columns * subdivisions; c++) {
-      if (c % subdivisions !== 0) {
-        const x = Math.round(startX + c * subColWidth);
-        ctx.moveTo(x, startY);
-        ctx.lineTo(x, startY + rows * cellHeight);
+    // Subdivide columns
+    for (let c = 0; c < columns; c++) {
+      const x0 = colX[c];
+      const x1 = colX[c + 1];
+      const cellW = x1 - x0;
+      const subColWidth = cellW / subdivisions;
+      for (let s = 1; s < subdivisions; s++) {
+        const x = Math.round(x0 + s * subColWidth);
+        ctx.moveTo(x, rowY[0]);
+        ctx.lineTo(x, rowY[rows]);
       }
     }
-    for (let r = 0; r <= rows * subdivisions; r++) {
-      if (r % subdivisions !== 0) {
-        const y = Math.round(startY + r * subRowHeight);
-        ctx.moveTo(startX, y);
-        ctx.lineTo(startX + columns * cellWidth, y);
+    // Subdivide rows
+    for (let r = 0; r < rows; r++) {
+      const y0 = rowY[r];
+      const y1 = rowY[r + 1];
+      const cellH = y1 - y0;
+      const subRowHeight = cellH / subdivisions;
+      for (let s = 1; s < subdivisions; s++) {
+        const y = Math.round(y0 + s * subRowHeight);
+        ctx.moveTo(colX[0], y);
+        ctx.lineTo(colX[columns], y);
       }
     }
     ctx.stroke();
@@ -102,8 +222,10 @@ export function drawGridOverlay(
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(1, thickness * 0.75);
     ctx.beginPath();
-    const gridRight = startX + columns * cellWidth;
-    const gridBottom = startY + rows * cellHeight;
+    const startX = colX[0];
+    const startY = rowY[0];
+    const gridRight = colX[columns];
+    const gridBottom = rowY[rows];
     ctx.moveTo(startX, startY);
     ctx.lineTo(gridRight, gridBottom);
     ctx.moveTo(gridRight, startY);
@@ -117,12 +239,11 @@ export function drawGridOverlay(
     ctx.lineWidth = Math.max(0.75, thickness * 0.5);
     ctx.beginPath();
     for (let r = 0; r < rows; r++) {
-      const y1 = startY + r * cellHeight;
-      const y2 = startY + (r + 1) * cellHeight;
+      const y1 = rowY[r];
+      const y2 = rowY[r + 1];
       for (let c = 0; c < columns; c++) {
-        const x1 = startX + c * cellWidth;
-        const x2 = startX + (c + 1) * cellWidth;
-        // Corner to corner diagonals within each individual cell
+        const x1 = colX[c];
+        const x2 = colX[c + 1];
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.moveTo(x2, y1);
@@ -139,15 +260,15 @@ export function drawGridOverlay(
   ctx.beginPath();
   // Vertical lines
   for (let c = 0; c <= columns; c++) {
-    const x = Math.round(startX + c * cellWidth);
-    ctx.moveTo(x, startY);
-    ctx.lineTo(x, startY + rows * cellHeight);
+    const x = Math.round(colX[c]);
+    ctx.moveTo(x, rowY[0]);
+    ctx.lineTo(x, rowY[rows]);
   }
   // Horizontal lines
   for (let r = 0; r <= rows; r++) {
-    const y = Math.round(startY + r * cellHeight);
-    ctx.moveTo(startX, y);
-    ctx.lineTo(startX + columns * cellWidth, y);
+    const y = Math.round(rowY[r]);
+    ctx.moveTo(colX[0], y);
+    ctx.lineTo(colX[columns], y);
   }
   ctx.stroke();
 
@@ -169,11 +290,12 @@ export function drawGridOverlay(
 
   ctx.restore();
 
-  // 5. Draw Labels (Outside or Inside Cells with high-contrast pills)
+  // 6. Draw Labels (Outside or Inside Cells with high-contrast pills)
   if (renderLabels && labelMode !== 'none') {
     ctx.save();
-    // Dynamic label size based on cell size to prevent overflow
-    const maxAllowedSize = Math.min(cellWidth * 0.35, cellHeight * 0.35);
+    const sampleW = colX[1] - colX[0];
+    const sampleH = rowY[1] - rowY[0];
+    const maxAllowedSize = Math.min(sampleW * 0.35, sampleH * 0.35);
     const computedFontSize = Math.max(9, Math.min(labelSize, maxAllowedSize));
     ctx.font = `bold ${computedFontSize}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     ctx.textAlign = 'center';
@@ -189,8 +311,9 @@ export function drawGridOverlay(
       const textWidth = textMetrics.width;
       const textHeight = computedFontSize;
 
-      const badgeX = startX + c * cellWidth + cellWidth / 2;
-      const badgeY = Math.min(height - textHeight / 2 - 4, Math.max(textHeight / 2 + 4, startY + cellHeight * 0.15));
+      const cellW = colX[c + 1] - colX[c];
+      const badgeX = colX[c] + cellW / 2;
+      const badgeY = Math.min(height - textHeight / 2 - 4, Math.max(textHeight / 2 + 4, rowY[0] + (rowY[1] - rowY[0]) * 0.15));
 
       // Draw dark semi-transparent pill for crystal clarity against any background
       ctx.fillStyle = 'rgba(15, 17, 23, 0.75)';
@@ -216,8 +339,9 @@ export function drawGridOverlay(
       const textWidth = textMetrics.width;
       const textHeight = computedFontSize;
 
-      const badgeX = Math.min(width - textWidth / 2 - 4, Math.max(textWidth / 2 + 4, startX + cellWidth * 0.12));
-      const badgeY = startY + r * cellHeight + cellHeight / 2;
+      const cellH = rowY[r + 1] - rowY[r];
+      const badgeX = Math.min(width - textWidth / 2 - 4, Math.max(textWidth / 2 + 4, colX[0] + (colX[1] - colX[0]) * 0.12));
+      const badgeY = rowY[r] + cellH / 2;
 
       // Dark pill
       ctx.fillStyle = 'rgba(15, 17, 23, 0.75)';
@@ -250,12 +374,13 @@ export function drawGridOverlayOnRect(
   rectW: number,
   rectH: number,
   grid: GridConfig,
-  renderLabels: boolean = true
+  renderLabels: boolean = true,
+  paper?: PaperConfig
 ): void {
   if (rectW <= 0 || rectH <= 0) return;
   ctx.save();
   ctx.translate(rectX, rectY);
-  drawGridOverlay(ctx, rectW, rectH, grid, renderLabels);
+  drawGridOverlay(ctx, rectW, rectH, grid, renderLabels, paper);
   ctx.restore();
 }
 

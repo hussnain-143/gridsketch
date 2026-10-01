@@ -27,6 +27,7 @@ import {
   Compass,
   Crosshair,
   Slash,
+  Maximize2,
 } from 'lucide-react';
 import { RangeSlider } from '@/components/editor/common/RangeSlider';
 import { SegmentedControl } from '@/components/editor/common/SegmentedControl';
@@ -93,7 +94,9 @@ export function GridBlueprintBentoCard({
     imageHeight,
     grid.rows,
     grid.columns,
-    safePaper
+    safePaper,
+    0,
+    grid
   );
 
   const [targetCellSize, setTargetCellSize] = useState<number>(() => {
@@ -150,13 +153,12 @@ export function GridBlueprintBentoCard({
     let newRows = grid.rows;
 
     if (unit === 'px') {
-      const baseCols = Math.max(1, Math.min(60, Math.round(imageWidth / validSize)));
+      const baseCols = Math.max(1, Math.min(100, Math.ceil(imageWidth / validSize)));
       newCols = baseCols;
       if (grid.lockAspectRatio) {
-        const cellPx = imageWidth / newCols;
-        newRows = Math.max(1, Math.min(60, Math.round(imageHeight / cellPx)));
+        newRows = Math.max(1, Math.min(100, Math.ceil(imageHeight / validSize)));
       } else {
-        newRows = Math.max(1, Math.min(60, Math.round(imageHeight / validSize)));
+        newRows = Math.max(1, Math.min(100, Math.ceil(imageHeight / validSize)));
       }
     } else {
       const targetMm = getCellSizeInMm(validSize, unit);
@@ -165,8 +167,9 @@ export function GridBlueprintBentoCard({
         const paperH = scaleAnalysis.paperHeightMm;
 
         // Directly compute integer columns and rows matching the target physical pitch
-        newCols = Math.max(1, Math.min(60, Math.round(paperW / targetMm)));
-        newRows = Math.max(1, Math.min(60, Math.round(paperH / targetMm)));
+        // Main cells will be EXACTLY targetMm. Last column & row take the remaining space!
+        newCols = Math.max(1, Math.min(100, Math.ceil(paperW / targetMm)));
+        newRows = Math.max(1, Math.min(100, Math.ceil(paperH / targetMm)));
       }
     }
 
@@ -177,6 +180,7 @@ export function GridBlueprintBentoCard({
       sizeUnit: unit,
       gridMode: 'size',
       lockAspectRatio: true,
+      exactCellSize: true,
     });
   };
 
@@ -226,7 +230,11 @@ export function GridBlueprintBentoCard({
           onChange={(val) => {
             const nextMode = val as GridSizeMode;
             setActiveTab(nextMode);
-            onChange({ gridMode: nextMode });
+            if (nextMode === 'size') {
+              applyCellSize(targetCellSize, sizeUnit);
+            } else {
+              onChange({ gridMode: nextMode });
+            }
           }}
           cols={2}
           iconsOnly={true}
@@ -422,12 +430,24 @@ export function GridBlueprintBentoCard({
               <div className="flex items-center justify-between text-[#94a3b8] text-[10px]">
                 <span className="flex items-center gap-1.5 text-[#7dd3fc]" title="Physical Size on Paper">
                   <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>Physical Pitch</span>
+                  <span>Exact Cell Pitch</span>
                 </span>
                 <span className="font-mono text-[#f0f6fc] font-semibold bg-[#7dd3fc]/15 px-2 py-0.5 rounded-md border border-[#7dd3fc]/30">
-                  {targetCellSize} × {targetCellSize} {sizeUnit} · 1:1 Square
+                  {targetCellSize} × {targetCellSize} {sizeUnit} · Exact Match
                 </span>
               </div>
+
+              {scaleAnalysis.remainderColMm !== undefined && scaleAnalysis.remainderRowMm !== undefined && (
+                <div className="flex items-center justify-between text-[10px] text-[#94a3b8]">
+                  <span className="flex items-center gap-1.5 text-[#c8a0f0]" title="Remaining Space in Edge Cells">
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Edge Remainder</span>
+                  </span>
+                  <span className="font-mono text-[#c8a0f0] font-medium">
+                    Col: {scaleAnalysis.remainderColMm.toFixed(1)} mm · Row: {scaleAnalysis.remainderRowMm.toFixed(1)} mm
+                  </span>
+                </div>
+              )}
 
               <div className="text-[10px] text-[#7dd3fc] pt-1.5 border-t border-[rgba(125,211,252,0.1)] flex items-center justify-between">
                 <span className="flex items-center gap-1.5">

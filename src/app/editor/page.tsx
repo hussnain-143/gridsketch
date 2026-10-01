@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   GridConfig,
   AdjustmentConfig,
+  DEFAULT_ADJUSTMENTS,
   FilterMode,
   TransformConfig,
   PaperConfig,
@@ -37,19 +38,6 @@ const DEFAULT_GRID: GridConfig = {
   lockAspectRatio: true,
 };
 
-const BASE_ADJUSTMENTS: AdjustmentConfig = {
-  brightness: 0,
-  contrast: 0,
-  exposure: 0,
-  shadows: 0,
-  highlights: 0,
-  saturation: 0,
-  sharpness: 0,
-  blur: 0,
-  threshold: 128,
-  posterizeLevels: 4,
-};
-
 const DEFAULT_TRANSFORM: TransformConfig = {
   rotation: 0,
   flipH: false,
@@ -81,6 +69,7 @@ export default function EditorPage() {
   // Editor Settings
   const [grid, setGrid] = useState<GridConfig>(DEFAULT_GRID);
   const [mode, setMode] = useState<FilterMode>('grayscale');
+  const [adjustments, setAdjustments] = useState<AdjustmentConfig>(DEFAULT_ADJUSTMENTS);
   const [transform, setTransform] = useState<TransformConfig>(DEFAULT_TRANSFORM);
   const [paper, setPaper] = useState<PaperConfig>(DEFAULT_PAPER);
 
@@ -128,10 +117,10 @@ export default function EditorPage() {
   const [processedCanvas, setProcessedCanvas] = useState<HTMLCanvasElement | null>(null);
 
   // Latest state reference for stable history pushes without re-renders
-  const stateRef = useRef({ grid, mode, transform, paper, historyIndex });
+  const stateRef = useRef({ grid, mode, adjustments, transform, paper, historyIndex });
   useEffect(() => {
-    stateRef.current = { grid, mode, transform, paper, historyIndex };
-  }, [grid, mode, transform, paper, historyIndex]);
+    stateRef.current = { grid, mode, adjustments, transform, paper, historyIndex };
+  }, [grid, mode, adjustments, transform, paper, historyIndex]);
 
   // Record History State
   const pushHistory = useCallback(() => {
@@ -139,10 +128,10 @@ export default function EditorPage() {
       isHistoryAction.current = false;
       return;
     }
-    const { grid: g, mode: m, transform: t, paper: p, historyIndex: hIdx } = stateRef.current;
+    const { grid: g, mode: m, adjustments: a, transform: t, paper: p, historyIndex: hIdx } = stateRef.current;
     const currentEntry: EditorHistoryEntry = {
       grid: { ...g },
-      adjustments: BASE_ADJUSTMENTS,
+      adjustments: { ...a },
       mode: m,
       transform: { ...t },
       paper: { ...p },
@@ -169,6 +158,12 @@ export default function EditorPage() {
   const pushHistoryDebounced = useCallback(() => {
     debouncedHistoryRef.current?.();
   }, []);
+
+  // Mode & Tone Adjustments Change Handler
+  const handleAdjustmentsChange = useCallback((patch: Partial<AdjustmentConfig>) => {
+    setAdjustments((prev) => ({ ...prev, ...patch }));
+    pushHistoryDebounced();
+  }, [pushHistoryDebounced]);
 
   // Load initial sample image or uploaded image from landing page / URL
   useEffect(() => {
@@ -229,6 +224,9 @@ export default function EditorPage() {
       const targetEntry = history[historyIndex - 1];
       setGrid(targetEntry.grid);
       setMode(targetEntry.mode);
+      if (targetEntry.adjustments) {
+        setAdjustments(targetEntry.adjustments);
+      }
       setTransform(targetEntry.transform);
       setPaper(targetEntry.paper);
       setHistoryIndex((prev) => prev - 1);
@@ -242,6 +240,9 @@ export default function EditorPage() {
       const targetEntry = history[historyIndex + 1];
       setGrid(targetEntry.grid);
       setMode(targetEntry.mode);
+      if (targetEntry.adjustments) {
+        setAdjustments(targetEntry.adjustments);
+      }
       setTransform(targetEntry.transform);
       setPaper(targetEntry.paper);
       setHistoryIndex((prev) => prev + 1);
@@ -272,7 +273,43 @@ export default function EditorPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  // Upload handler with validation and error protection
+  // Capacitor Native Android Hardware Back Button Listener
+  useEffect(() => {
+    let removeListener: (() => void) | null = null;
+
+    const setupBackButton = async () => {
+      try {
+        const { App } = await import('@capacitor/app');
+        const listener = await App.addListener('backButton', () => {
+          if (isExportOpen) {
+            setIsExportOpen(false);
+          } else if (isPrintOpen) {
+            setIsPrintOpen(false);
+          } else if (mobileMenuDrawerOpen) {
+            setMobileMenuDrawerOpen(false);
+          } else if (mobileEditDrawerOpen) {
+            setMobileEditDrawerOpen(false);
+          } else if (layoutMode !== 'bento') {
+            setLayoutMode('bento');
+          } else {
+            App.exitApp();
+          }
+        });
+        removeListener = () => {
+          listener.remove();
+        };
+      } catch {
+        // Web environment: no hardware back button
+      }
+    };
+
+    setupBackButton();
+    return () => {
+      removeListener?.();
+    };
+  }, [isExportOpen, isPrintOpen, mobileMenuDrawerOpen, mobileEditDrawerOpen, layoutMode]);
+
+  // Upload handler with validation, memory protection and error handling
   const handleUploadImage = (file: File) => {
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image file (PNG, JPG, WebP).', 'error');
@@ -289,6 +326,27 @@ export default function EditorPage() {
         showToast('Failed to decode image data.', 'error');
       };
       img.onload = () => {
+        const MAX_DIM = 4096;
+        if (img.naturalWidth > MAX_DIM || img.naturalHeight > MAX_DIM) {
+          const ratio = Math.min(MAX_DIM / img.naturalWidth, MAX_DIM / img.naturalHeight);
+          const scaledCanvas = document.createElement('canvas');
+          scaledCanvas.width = Math.round(img.naturalWidth * ratio);
+          scaledCanvas.height = Math.round(img.naturalHeight * ratio);
+          const ctx = scaledCanvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, scaledCanvas.width, scaledCanvas.height);
+            const scaledImg = new Image();
+            scaledImg.onload = () => {
+              setLoadedImage(scaledImg);
+              setImageName(file.name.replace(/\.[^/.]+$/, ''));
+              setTransform(DEFAULT_TRANSFORM);
+              pushHistory();
+              showToast(`Loaded ${file.name} (calibrated to studio resolution)`, 'success');
+            };
+            scaledImg.src = scaledCanvas.toDataURL('image/png');
+            return;
+          }
+        }
         setLoadedImage(img);
         setImageName(file.name.replace(/\.[^/.]+$/, ''));
         setTransform(DEFAULT_TRANSFORM);
@@ -320,6 +378,7 @@ export default function EditorPage() {
   const handleResetAll = () => {
     setGrid(DEFAULT_GRID);
     setMode('original');
+    setAdjustments(DEFAULT_ADJUSTMENTS);
     setTransform(DEFAULT_TRANSFORM);
     setPaper(DEFAULT_PAPER);
     pushHistory();
@@ -338,7 +397,7 @@ export default function EditorPage() {
         const outCanvas = processImageCanvas(
           rawTransformedCanvas,
           mode,
-          BASE_ADJUSTMENTS
+          adjustments
         );
         if (!canceled) {
           setProcessedCanvas(outCanvas);
@@ -356,17 +415,17 @@ export default function EditorPage() {
       canceled = true;
       clearTimeout(timer);
     };
-  }, [rawTransformedCanvas, mode]);
+  }, [rawTransformedCanvas, mode, adjustments]);
 
   const currentFilterTitle =
     mode === 'original'
       ? 'Original Photo'
       : mode === 'grayscale'
       ? 'Grayscale'
-      : mode === 'value_study'
-      ? '5-Step Value Study'
-      : mode === 'notan'
-      ? '2-Tone Notan'
+      : mode === 'charcoal'
+      ? 'Master Charcoal'
+      : mode === 'graphite'
+      ? 'Fine Graphite'
       : 'Chiaroscuro';
 
   return (
@@ -448,6 +507,8 @@ export default function EditorPage() {
               setMode(newMode);
               pushHistory();
             }}
+            adjustments={adjustments}
+            onAdjustmentsChange={handleAdjustmentsChange}
             transform={transform}
             onTransformChange={(updates) => {
               setTransform((prev) => ({ ...prev, ...updates }));
@@ -491,6 +552,8 @@ export default function EditorPage() {
               setMode(newMode);
               pushHistory();
             }}
+            adjustments={adjustments}
+            onAdjustmentsChange={handleAdjustmentsChange}
             transform={transform}
             onTransformChange={(updates) => {
               setTransform((prev) => ({ ...prev, ...updates }));
@@ -535,6 +598,8 @@ export default function EditorPage() {
                   setMode(newMode);
                   pushHistory();
                 }}
+                adjustments={adjustments}
+                onAdjustmentsChange={handleAdjustmentsChange}
                 transform={transform}
                 onTransformChange={(updates) => {
                   setTransform((prev) => ({ ...prev, ...updates }));

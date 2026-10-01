@@ -1,9 +1,9 @@
 export type FilterMode =
   | 'original'
   | 'grayscale'
-  | 'high_contrast'
-  | 'value_study'
-  | 'notan';
+  | 'charcoal'
+  | 'graphite'
+  | 'high_contrast';
 
 export type LabelMode = 'alphanumeric' | 'numeric' | 'none';
 
@@ -27,6 +27,7 @@ export interface GridConfig {
   gridMode?: GridSizeMode;
   sizeUnit?: GridSizeUnit;
   cellSize?: number;
+  exactCellSize?: boolean;
 }
 
 export interface AdjustmentConfig {
@@ -40,7 +41,24 @@ export interface AdjustmentConfig {
   blur: number; // 0 to 20 (0 default)
   threshold: number; // 0 to 255 (128 default, used in B&W mode)
   posterizeLevels: number; // 3 to 8 (4 default, used in Value Study)
+  modeIntensity?: number; // 0 to 100 (100 default) - controls overall drawing tone strength
+  textureDetail?: number; // 0 to 100 (75 default) - controls micro-texture, skin pores, stubble & fabric
 }
+
+export const DEFAULT_ADJUSTMENTS: AdjustmentConfig = {
+  brightness: 0,
+  contrast: 0,
+  exposure: 0,
+  shadows: 0,
+  highlights: 0,
+  saturation: 0,
+  sharpness: 0,
+  blur: 0,
+  threshold: 128,
+  posterizeLevels: 4,
+  modeIntensity: 100,
+  textureDetail: 75,
+};
 
 export interface CropRect {
   x: number; // 0 to 1 normalized

@@ -129,15 +129,15 @@ export function createExportCanvas(
     ctx.save();
     ctx.translate(contentOriginX, contentOriginY);
     if (!isBlankGrid && target === 'image' && isPage && drawImgW > 0 && drawImgH > 0) {
-      drawGridOverlayOnRect(ctx, drawImgX, drawImgY, drawImgW, drawImgH, effectiveGrid, includeLabels);
+      drawGridOverlayOnRect(ctx, drawImgX, drawImgY, drawImgW, drawImgH, effectiveGrid, includeLabels, paper);
     } else {
-      drawGridOverlay(ctx, exportW, exportH, effectiveGrid, includeLabels);
+      drawGridOverlay(ctx, exportW, exportH, effectiveGrid, includeLabels, paper);
     }
     ctx.restore();
   }
 
   // Draw Physical Ruler Margins if enabled
-  const scaleInfo = calculatePaperGridScale(exportW, exportH, grid.rows, grid.columns, paper);
+  const scaleInfo = calculatePaperGridScale(exportW, exportH, grid.rows, grid.columns, paper, 0, grid);
   if (includeRulerMargins && rulerThickness > 0) {
     drawPhysicalRulerMargins(
       ctx,
@@ -263,7 +263,7 @@ export function createSideBySideCanvas(
   // Draw Grid Overlay onto the Right panel
   ctx.save();
   ctx.translate(rightX, contentY);
-  drawGridOverlay(ctx, panelW, panelH, grid, exportConfig.includeLabels);
+  drawGridOverlay(ctx, panelW, panelH, grid, exportConfig.includeLabels, paper);
   ctx.restore();
 
   // Draw Center Divider Line
@@ -276,7 +276,7 @@ export function createSideBySideCanvas(
   ctx.stroke();
 
   // Footer: Drafter's Spec Legend or Watermark Banner
-  const scaleInfo = calculatePaperGridScale(panelW, panelH, grid.rows, grid.columns, paper);
+  const scaleInfo = calculatePaperGridScale(panelW, panelH, grid.rows, grid.columns, paper, 0, grid);
   const footerY = contentY + panelH + 8;
 
   if (exportConfig.includeDrafterLegend && drafterLegendHeight > 0) {
@@ -797,7 +797,7 @@ export async function downloadPdf(
   doc.addImage(imgDataUrl, 'JPEG', posX, posY, renderW, renderH);
 
   // Artist scale footer
-  const scaleInfo = calculatePaperGridScale(canvas.width, canvas.height, grid.rows, grid.columns, paper);
+  const scaleInfo = calculatePaperGridScale(canvas.width, canvas.height, grid.rows, grid.columns, paper, 0, grid);
   doc.setFontSize(8.5);
   doc.setTextColor(100, 100, 100);
   const footerText = `${scaleInfo.rulerSummary} | Printable size: ${renderW.toFixed(1)} × ${renderH.toFixed(1)} mm`;

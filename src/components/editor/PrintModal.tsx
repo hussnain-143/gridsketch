@@ -13,6 +13,7 @@ import {
   Layers,
   Bookmark,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 import { createExportCanvas, downloadPdf } from '@/lib/image/export';
 
@@ -40,6 +41,7 @@ export function PrintModal({
   const [includeRulerMargins, setIncludeRulerMargins] = useState<boolean>(true);
   const [includeDrafterLegend, setIncludeDrafterLegend] = useState<boolean>(true);
   const [isPdfGenerating, setIsPdfGenerating] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const scaleAnalysis = processedCanvas
     ? calculatePaperGridScale(
@@ -47,13 +49,16 @@ export function PrintModal({
         processedCanvas.height,
         grid.rows,
         grid.columns,
-        paper
+        paper,
+        0,
+        grid
       )
     : null;
 
   // Render high-res preview onto the modal canvas
   useEffect(() => {
     if (!isOpen || !processedCanvas || !printCanvasRef.current) return;
+    setErrorMessage(null);
 
     const exportCanvas = createExportCanvas(
       processedCanvas,
@@ -92,6 +97,7 @@ export function PrintModal({
 
   const handlePrintPdfDownload = async () => {
     setIsPdfGenerating(true);
+    setErrorMessage(null);
     try {
       const exportCanvas = createExportCanvas(
         processedCanvas,
@@ -122,8 +128,10 @@ export function PrintModal({
         includeDrafterLegend: includeDrafterLegend,
         quality: 1.0,
       });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Print PDF error:', err);
+      const msg = err instanceof Error ? err.message : 'Could not generate printable PDF. Please check available memory.';
+      setErrorMessage(msg);
     } finally {
       setIsPdfGenerating(false);
     }
@@ -253,6 +261,17 @@ export function PrintModal({
               />
             </div>
           </div>
+
+          {/* Inline Error Banner */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 flex items-start gap-2.5 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div className="flex-1 text-[11px] leading-relaxed">
+                <span className="font-semibold block">Print Generation Interrupted</span>
+                <span>{errorMessage}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Print Metadata & Action Bar */}

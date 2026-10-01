@@ -455,7 +455,7 @@ export function StudioCanvas({
       ctx.rect(splitX, 0, width - splitX, height);
       ctx.clip();
       ctx.drawImage(processedCanvas, 0, 0);
-      drawGridOverlay(ctx, width, height, grid, true);
+      drawGridOverlay(ctx, width, height, grid, true, paper);
       ctx.restore();
 
       // Splitter line
@@ -471,7 +471,7 @@ export function StudioCanvas({
       // Normal: image only — grid is drawn on the separate page grid canvas
       ctx.drawImage(processedCanvas, 0, 0);
     }
-  }, [processedCanvas, rawImageCanvas, grid, showCompare, splitPos, holdOriginal, scale]);
+  }, [processedCanvas, rawImageCanvas, grid, showCompare, splitPos, holdOriginal, scale, paper]);
 
   // Draw grid on page canvas (matches page dimensions or image boundary based on gridTarget)
   useEffect(() => {
@@ -495,13 +495,13 @@ export function StudioCanvas({
       const target = paper?.gridTarget || defaultTarget;
 
       if (target === 'image' && showPageFrame && imgDisplayW > 0 && imgDisplayH > 0) {
-        drawGridOverlayOnRect(ctx, imgOffsetX, imgOffsetY, imgDisplayW, imgDisplayH, grid, true);
+        drawGridOverlayOnRect(ctx, imgOffsetX, imgOffsetY, imgDisplayW, imgDisplayH, grid, true, paper);
       } else {
-        drawGridOverlay(ctx, pageW, pageH, grid, true);
+        drawGridOverlay(ctx, pageW, pageH, grid, true, paper);
       }
 
       if (paper?.showRulerMargins) {
-        const scaleInfo = calculatePaperGridScale(pageW, pageH, grid.rows, grid.columns, paper);
+        const scaleInfo = calculatePaperGridScale(pageW, pageH, grid.rows, grid.columns, paper, 0, grid);
         const rulerThickness = Math.max(26, Math.round(Math.min(pageW, pageH) * 0.035));
         drawPhysicalRulerMargins(
           ctx,

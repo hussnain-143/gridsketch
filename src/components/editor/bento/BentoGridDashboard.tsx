@@ -6,6 +6,7 @@ import {
   PaperConfig,
   FilterMode,
   TransformConfig,
+  AdjustmentConfig,
 } from '@/types/editor';
 import { CanvasHeroBentoCard } from './CanvasHeroBentoCard';
 import { ImageFitBentoCard } from './ImageFitBentoCard';
@@ -24,6 +25,8 @@ interface BentoGridDashboardProps {
   onPaperChange: (updates: Partial<PaperConfig>) => void;
   mode: FilterMode;
   onModeChange: (newMode: FilterMode) => void;
+  adjustments?: AdjustmentConfig;
+  onAdjustmentsChange?: (updates: Partial<AdjustmentConfig>) => void;
   transform: TransformConfig;
   onTransformChange: (updates: Partial<TransformConfig>) => void;
   imageName: string;
@@ -50,6 +53,8 @@ export function BentoGridDashboard({
   onPaperChange,
   mode,
   onModeChange,
+  adjustments,
+  onAdjustmentsChange,
   transform,
   onTransformChange,
   imageName,
@@ -131,12 +136,15 @@ export function BentoGridDashboard({
             columns={grid.columns}
             onChange={onPaperChange}
             colSpan="col-span-1 lg:col-span-1 xl:col-span-1"
+            grid={grid}
           />
 
           {/* 5. Tonal & Drawing Modes */}
           <ModesBentoCard
             currentMode={mode}
             onSelectMode={onModeChange}
+            adjustments={adjustments}
+            onAdjustmentsChange={onAdjustmentsChange}
             colSpan="col-span-1 lg:col-span-1 xl:col-span-1"
           />
 

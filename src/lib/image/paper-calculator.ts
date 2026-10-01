@@ -1,4 +1,4 @@
-import { PaperConfig, PaperPreset } from '@/types/editor';
+import { GridConfig, PaperConfig, PaperPreset } from '@/types/editor';
 
 export interface PaperDimensions {
   widthMm: number;
@@ -29,6 +29,9 @@ export interface GridScaleAnalysis {
   aspectRatioMismatch: boolean;
   aspectDifferencePercent: number;
   rulerSummary: string;
+  isExactGrid?: boolean;
+  remainderColMm?: number;
+  remainderRowMm?: number;
 }
 
 export function calculatePaperGridScale(
@@ -37,7 +40,8 @@ export function calculatePaperGridScale(
   rows: number,
   columns: number,
   paper: PaperConfig,
-  marginMm: number = 0
+  marginMm: number = 0,
+  grid?: GridConfig
 ): GridScaleAnalysis {
   let baseWidth: number;
   let baseHeight: number;
@@ -59,18 +63,61 @@ export function calculatePaperGridScale(
   const printableW = Math.max(1, paperWidthMm - marginMm * 2);
   const printableH = Math.max(1, paperHeightMm - marginMm * 2);
 
-  const cellWidthMm = printableW / Math.max(1, columns);
-  const cellHeightMm = printableH / Math.max(1, rows);
+  const isExactMode =
+    (grid?.gridMode === 'size' || !!grid?.exactCellSize) &&
+    typeof grid?.cellSize === 'number' &&
+    grid.cellSize > 0;
+
+  let cellWidthMm: number;
+  let cellHeightMm: number;
+  let isExactGrid = false;
+  let remainderColMm = 0;
+  let remainderRowMm = 0;
+
+  if (isExactMode && grid) {
+    let targetMm = grid.cellSize!;
+    if (grid.sizeUnit === 'cm') targetMm = grid.cellSize! * 10;
+    else if (grid.sizeUnit === 'in') targetMm = grid.cellSize! * 25.4;
+    else if (grid.sizeUnit === 'px') {
+      const pxRatio = printableW / Math.max(1, imageWidth);
+      targetMm = grid.cellSize! * pxRatio;
+    }
+
+    cellWidthMm = targetMm;
+    cellHeightMm = targetMm;
+    isExactGrid = true;
+    remainderColMm = Math.max(0, printableW - (columns - 1) * targetMm);
+    remainderRowMm = Math.max(0, printableH - (rows - 1) * targetMm);
+  } else {
+    cellWidthMm = printableW / Math.max(1, columns);
+    cellHeightMm = printableH / Math.max(1, rows);
+    remainderColMm = cellWidthMm;
+    remainderRowMm = cellHeightMm;
+  }
 
   const cellWidthIn = cellWidthMm / 25.4;
   const cellHeightIn = cellHeightMm / 25.4;
 
-  const aspectDifferencePercent = Math.abs((cellWidthMm - cellHeightMm) / Math.max(cellWidthMm, cellHeightMm)) * 100;
+  const aspectDifferencePercent = isExactGrid
+    ? 0
+    : Math.abs((cellWidthMm - cellHeightMm) / Math.max(cellWidthMm, cellHeightMm)) * 100;
   const aspectRatioMismatch = aspectDifferencePercent > 5;
 
-  const rulerSummary = `${columns} × ${rows} Grid on ${paper.preset} (${paper.orientation}): Each square measures ${cellWidthMm.toFixed(
-    1
-  )} × ${cellHeightMm.toFixed(1)} mm (${(cellWidthMm / 10).toFixed(2)} × ${(cellHeightMm / 10).toFixed(2)} cm • ${cellWidthIn.toFixed(2)}″ × ${cellHeightIn.toFixed(2)}″).`;
+  const hasRemainder =
+    isExactGrid &&
+    (Math.abs(remainderColMm - cellWidthMm) > 0.1 || Math.abs(remainderRowMm - cellHeightMm) > 0.1);
+
+  const rulerSummary = isExactGrid
+    ? `${columns} × ${rows} Grid on ${paper.preset} (${paper.orientation}): Exact ${cellWidthMm.toFixed(
+        1
+      )} × ${cellHeightMm.toFixed(1)} mm per square${
+        hasRemainder
+          ? ` (Last Col: ${remainderColMm.toFixed(1)} mm, Last Row: ${remainderRowMm.toFixed(1)} mm)`
+          : ''
+      }.`
+    : `${columns} × ${rows} Grid on ${paper.preset} (${paper.orientation}): Each square measures ${cellWidthMm.toFixed(
+        1
+      )} × ${cellHeightMm.toFixed(1)} mm (${(cellWidthMm / 10).toFixed(2)} × ${(cellHeightMm / 10).toFixed(2)} cm • ${cellWidthIn.toFixed(2)}″ × ${cellHeightIn.toFixed(2)}″).`;
 
   return {
     paperWidthMm,
@@ -86,6 +133,9 @@ export function calculatePaperGridScale(
     aspectRatioMismatch,
     aspectDifferencePercent,
     rulerSummary,
+    isExactGrid,
+    remainderColMm,
+    remainderRowMm,
   };
 }
 

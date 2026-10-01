@@ -24,6 +24,7 @@ interface PaperRulerBentoCardProps {
   columns: number;
   onChange: (updates: Partial<PaperConfig>) => void;
   colSpan?: string;
+  grid?: import('@/types/editor').GridConfig;
 }
 
 const PRESETS: PaperPreset[] = ['A4', 'A3', 'Letter', 'Legal', 'Custom'];
@@ -36,13 +37,16 @@ export function PaperRulerBentoCard({
   columns,
   onChange,
   colSpan = '',
+  grid,
 }: PaperRulerBentoCardProps) {
   const scaleAnalysis = calculatePaperGridScale(
     imageWidth,
     imageHeight,
     rows,
     columns,
-    paper
+    paper,
+    0,
+    grid
   );
 
   return (
@@ -141,6 +145,11 @@ export function PaperRulerBentoCard({
           {scaleAnalysis.cellWidthMm.toFixed(1)} × {scaleAnalysis.cellHeightMm.toFixed(1)}{' '}
           <span className="text-xs text-[#94a3b8] font-normal">mm</span>
         </div>
+        {scaleAnalysis.isExactGrid && scaleAnalysis.remainderColMm !== undefined && scaleAnalysis.remainderRowMm !== undefined && (Math.abs(scaleAnalysis.remainderColMm - scaleAnalysis.cellWidthMm) > 0.1 || Math.abs(scaleAnalysis.remainderRowMm - scaleAnalysis.cellHeightMm) > 0.1) && (
+          <div className="text-[10px] font-mono text-[#c8a0f0]">
+            Last Col: {scaleAnalysis.remainderColMm.toFixed(1)} mm · Last Row: {scaleAnalysis.remainderRowMm.toFixed(1)} mm
+          </div>
+        )}
 
         <div className="pt-2 border-t border-[rgba(125,211,252,0.1)] flex items-center justify-between text-[10px] text-[#94a3b8]">
           <span className="flex items-center gap-1 text-[#7dd3fc]" title="Sheet Dimension">

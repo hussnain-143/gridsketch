@@ -46,7 +46,9 @@ export function BlueprintStatsBentoCard({
     imageHeight,
     grid.rows,
     grid.columns,
-    paper
+    paper,
+    0,
+    grid
   );
 
   const totalCells = grid.rows * grid.columns;
@@ -69,7 +71,9 @@ export function BlueprintStatsBentoCard({
             <span className="text-[10px] text-[#94a3b8] font-normal">mm</span>
           </div>
           <span className="text-[9px] font-mono text-[#c8a0f0]">
-            {scale.cellWidthIn.toFixed(2)}″ × {scale.cellHeightIn.toFixed(2)}″
+            {scale.isExactGrid && scale.remainderColMm !== undefined && scale.remainderRowMm !== undefined && (Math.abs(scale.remainderColMm - scale.cellWidthMm) > 0.1 || Math.abs(scale.remainderRowMm - scale.cellHeightMm) > 0.1)
+              ? `Edge: ${scale.remainderColMm.toFixed(1)}×${scale.remainderRowMm.toFixed(1)} mm`
+              : `${scale.cellWidthIn.toFixed(2)}″ × ${scale.cellHeightIn.toFixed(2)}″`}
           </span>
         </div>
 
