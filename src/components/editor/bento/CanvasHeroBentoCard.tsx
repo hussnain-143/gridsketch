@@ -27,6 +27,8 @@ interface CanvasHeroBentoCardProps {
   imageWidth: number;
   imageHeight: number;
   onExpandFullscreen?: () => void;
+  onUploadImage?: (file: File) => void;
+  onTriggerUpload?: () => void;
   colSpan?: string;
   className?: string;
 }
@@ -47,6 +49,8 @@ export function CanvasHeroBentoCard({
   imageWidth,
   imageHeight,
   onExpandFullscreen,
+  onUploadImage,
+  onTriggerUpload,
   colSpan = 'col-span-1 md:col-span-2 lg:col-span-2 xl:col-span-2 row-span-2',
   className = '',
 }: CanvasHeroBentoCardProps) {
@@ -101,6 +105,8 @@ export function CanvasHeroBentoCard({
           isMovingImage={isMovingImage}
           onToggleMoveImage={onToggleMoveImage}
           onPaperChange={onPaperChange}
+          onUploadImage={onUploadImage}
+          onTriggerUpload={onTriggerUpload}
         />
       </div>
     </BentoCard>

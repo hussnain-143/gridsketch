@@ -10,10 +10,7 @@ import {
   Printer,
   Download,
   SplitSquareVertical,
-  Layers,
-  Check,
 } from 'lucide-react';
-import { SAMPLE_IMAGES } from '@/lib/image/sample-images';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
 interface MobileMenuDrawerProps {
@@ -21,7 +18,6 @@ interface MobileMenuDrawerProps {
   onClose: () => void;
   onTriggerUpload: () => void;
   onUploadImage?: (file: File) => void;
-  onSelectSample: (id: string) => void;
   currentImageName?: string;
   onResetAll: () => void;
   canUndo: boolean;
@@ -39,7 +35,6 @@ export function MobileMenuDrawer({
   onClose,
   onTriggerUpload,
   onUploadImage,
-  onSelectSample,
   currentImageName,
   onResetAll,
   canUndo,
@@ -75,7 +70,7 @@ export function MobileMenuDrawer({
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end no-print">
-      {/* Hidden Dedicated File Input for Native Mobile Chooser */}
+      {/* Hidden Dedicated File Input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -84,7 +79,7 @@ export function MobileMenuDrawer({
         onChange={handleFileChange}
       />
 
-      {/* Dimmed Blurred Backdrop with smooth fade */}
+      {/* Backdrop */}
       <div
         role="button"
         tabIndex={0}
@@ -94,35 +89,26 @@ export function MobileMenuDrawer({
         onTouchEnd={handleBackdropClick}
       />
 
-      {/* Slide-in Drawer Container with smooth slide */}
+      {/* Slide-in Drawer Container on the RIGHT */}
       <div
-        className="relative w-[85vw] max-w-[340px] h-full flex flex-col z-10 select-none shadow-2xl ml-auto animate-drawer-slide-in"
-        style={{
-          background: 'linear-gradient(180deg, rgba(15, 21, 36, 0.96) 0%, rgba(10, 14, 26, 0.98) 100%)',
-          backdropFilter: 'blur(32px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(200%)',
-          borderLeft: '1px solid rgba(125, 211, 252, 0.22)',
-          boxShadow: '-10px 0 40px rgba(0, 0, 0, 0.7), inset 1px 0 0 rgba(255, 255, 255, 0.1)',
-        }}
+        className="relative w-[85vw] max-w-[340px] h-full flex flex-col z-10 select-none shadow-2xl ml-auto bg-[#161e27] border-l border-[#273444] animate-drawer-slide-in"
       >
         {/* Drawer Header with Safe-Area Clearance */}
-        <div className="pt-[max(env(safe-area-inset-top),20px)] px-4 pb-3 border-b border-[rgba(125,211,252,0.15)] flex items-center justify-between shrink-0 bg-[rgba(10,14,26,0.5)]">
-          <div className="flex items-center gap-2">
-            <BrandLogo size="sm" />
-          </div>
+        <div className="pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 border-b border-[#273444] flex items-center justify-between shrink-0 bg-[#0b0f14]/80">
+          <BrandLogo size="sm" clickable={false} badgeText="MENU" />
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-[#94a3b8] hover:text-[#f0f6fc] hover:bg-[#7dd3fc]/15 transition-all touch-manipulation cursor-pointer"
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#38bdf8]/10 transition-all touch-manipulation cursor-pointer border border-[#273444]"
             title="Close Menu"
           >
-            <X className="w-5 h-5 text-[#7dd3fc]" />
+            <X className="w-5 h-5 text-[#38bdf8]" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-12 space-y-5 no-scrollbar">
-          {/* Quick Primary Actions */}
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-12 space-y-4 no-scrollbar">
+          {/* Quick Primary Actions: Upload & Export */}
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -134,7 +120,7 @@ export function MobileMenuDrawer({
                   onClose();
                 }
               }}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#7dd3fc]/15 border border-[#7dd3fc]/30 text-[#7dd3fc] font-semibold text-xs active:scale-95 transition-all touch-manipulation cursor-pointer"
+              className="min-h-[46px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#111820] border border-[#273444] text-[#38bdf8] hover:border-[#38bdf8]/40 font-semibold text-xs active:scale-95 transition-all touch-manipulation cursor-pointer"
             >
               <Upload className="w-4 h-4" />
               <span>Upload Photo</span>
@@ -146,30 +132,42 @@ export function MobileMenuDrawer({
                 onOpenExport();
                 onClose();
               }}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#7dd3fc] text-[#0a0e1a] font-bold text-xs shadow-[0_0_15px_rgba(125,211,252,0.35)] active:scale-95 transition-all touch-manipulation cursor-pointer"
+              className="min-h-[46px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#38bdf8] hover:bg-[#0284c7] text-[#0b0f14] font-bold text-xs shadow-md shadow-[#38bdf8]/20 active:scale-95 transition-all touch-manipulation cursor-pointer"
             >
               <Download className="w-4 h-4 stroke-[2.5]" />
               <span>Export</span>
             </button>
           </div>
 
-          {/* History & Compare Tools */}
-          <div className="p-3 rounded-2xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.12)] space-y-2.5">
-            <span className="text-[10px] font-mono tracking-wider text-[#7dd3fc]/70 uppercase font-semibold">
+          {/* Current Loaded File Readout */}
+          {currentImageName && (
+            <div className="p-3 rounded-2xl bg-[#111820] border border-[#273444] flex items-center justify-between">
+              <span className="text-[10px] font-mono tracking-wider text-[#94a3b8] uppercase font-semibold">
+                Active Image
+              </span>
+              <span className="text-xs font-semibold text-[#f8fafc] truncate max-w-[180px]">
+                {currentImageName}
+              </span>
+            </div>
+          )}
+
+          {/* Studio Tools: Undo, Redo, Compare */}
+          <div className="p-3.5 rounded-2xl bg-[#111820] border border-[#273444] space-y-2.5">
+            <span className="text-[10px] font-mono tracking-wider text-[#38bdf8] uppercase font-semibold">
               Studio Tools
             </span>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={onUndo}
                 disabled={!canUndo}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation ${
+                className={`min-h-[48px] flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation ${
                   canUndo
-                    ? 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#f0f6fc] hover:bg-[#7dd3fc]/15 cursor-pointer active:scale-95'
-                    : 'bg-transparent border-transparent text-slate-600 cursor-not-allowed'
+                    ? 'bg-[#161e27] border-[#273444] text-[#f8fafc] hover:bg-[#38bdf8]/10 cursor-pointer active:scale-95'
+                    : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed'
                 }`}
               >
-                <Undo2 className="w-4 h-4 mb-0.5 text-[#7dd3fc]" />
+                <Undo2 className="w-4 h-4 mb-0.5 text-[#38bdf8]" />
                 <span className="text-[10px]">Undo</span>
               </button>
 
@@ -177,86 +175,42 @@ export function MobileMenuDrawer({
                 type="button"
                 onClick={onRedo}
                 disabled={!canRedo}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation ${
+                className={`min-h-[48px] flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation ${
                   canRedo
-                    ? 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#f0f6fc] hover:bg-[#7dd3fc]/15 cursor-pointer active:scale-95'
-                    : 'bg-transparent border-transparent text-slate-600 cursor-not-allowed'
+                    ? 'bg-[#161e27] border-[#273444] text-[#f8fafc] hover:bg-[#38bdf8]/10 cursor-pointer active:scale-95'
+                    : 'bg-transparent border-transparent text-slate-700 cursor-not-allowed'
                 }`}
               >
-                <Redo2 className="w-4 h-4 mb-0.5 text-[#7dd3fc]" />
+                <Redo2 className="w-4 h-4 mb-0.5 text-[#38bdf8]" />
                 <span className="text-[10px]">Redo</span>
               </button>
 
               <button
                 type="button"
                 onClick={onToggleCompare}
-                className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation cursor-pointer active:scale-95 ${
+                className={`min-h-[48px] flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all touch-manipulation cursor-pointer active:scale-95 ${
                   showCompare
-                    ? 'bg-[#7dd3fc]/20 border-[#7dd3fc]/50 text-[#7dd3fc]'
-                    : 'bg-[rgba(10,14,26,0.6)] border-[rgba(125,211,252,0.2)] text-[#94a3b8]'
+                    ? 'bg-[#38bdf8]/20 border-[#38bdf8]/50 text-[#38bdf8]'
+                    : 'bg-[#161e27] border-[#273444] text-[#94a3b8]'
                 }`}
               >
-                <SplitSquareVertical className="w-4 h-4 mb-0.5 text-[#7dd3fc]" />
+                <SplitSquareVertical className="w-4 h-4 mb-0.5 text-[#38bdf8]" />
                 <span className="text-[10px]">Compare</span>
               </button>
             </div>
           </div>
 
-          {/* Reference Samples Gallery */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono tracking-wider text-[#7dd3fc]/70 uppercase font-semibold flex items-center gap-1.5">
-                <Layers className="w-3 h-3 text-[#7dd3fc]" />
-                Reference Samples
-              </span>
-              <span className="text-[9px] text-[#94a3b8]">3 Curated</span>
-            </div>
-
-            <div className="space-y-1.5">
-              {SAMPLE_IMAGES.map((sample) => {
-                const isActive = currentImageName === sample.title;
-                return (
-                  <button
-                    key={sample.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectSample(sample.id);
-                      onClose();
-                    }}
-                    className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all touch-manipulation cursor-pointer active:scale-[0.98] ${
-                      isActive
-                        ? 'bg-[#7dd3fc]/20 border-[#7dd3fc]/50 text-[#f0f6fc] shadow-[0_0_15px_rgba(125,211,252,0.15)]'
-                        : 'bg-[rgba(15,21,36,0.6)] border-[rgba(125,211,252,0.1)] text-[#94a3b8] hover:bg-[#7dd3fc]/10 hover:text-[#f0f6fc]'
-                    }`}
-                  >
-                    <div className="flex flex-col min-w-0 pr-2">
-                      <span className="text-xs font-semibold truncate text-[#f0f6fc]">
-                        {sample.title}
-                      </span>
-                      <span className="text-[10px] text-[#94a3b8] truncate">
-                        {sample.subtitle}
-                      </span>
-                    </div>
-                    {isActive && (
-                      <Check className="w-4 h-4 text-[#7dd3fc] shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Output & Utilities */}
-          <div className="space-y-1.5 pt-2 border-t border-[rgba(125,211,252,0.1)]">
+          {/* Print & Reset Utilities */}
+          <div className="space-y-2 pt-2 border-t border-[#273444]">
             <button
               type="button"
               onClick={() => {
                 onOpenPrint();
                 onClose();
               }}
-              className="w-full p-2.5 rounded-xl bg-[rgba(15,21,36,0.6)] hover:bg-[#7dd3fc]/10 border border-[rgba(125,211,252,0.12)] text-[#f0f6fc] text-xs flex items-center gap-2.5 transition-all touch-manipulation cursor-pointer active:scale-[0.98]"
+              className="w-full min-h-[46px] p-2.5 rounded-xl bg-[#111820] hover:bg-[#38bdf8]/10 border border-[#273444] text-[#f8fafc] text-xs flex items-center gap-2.5 transition-all touch-manipulation cursor-pointer active:scale-[0.98]"
             >
-              <Printer className="w-4 h-4 text-[#7dd3fc]" />
+              <Printer className="w-4 h-4 text-[#38bdf8]" />
               <span>Print Scale Reference Sheet</span>
             </button>
 
@@ -266,7 +220,7 @@ export function MobileMenuDrawer({
                 onResetAll();
                 onClose();
               }}
-              className="w-full p-2.5 rounded-xl bg-[rgba(15,21,36,0.4)] hover:bg-rose-500/15 border border-[rgba(125,211,252,0.1)] hover:border-rose-500/30 text-[#94a3b8] hover:text-rose-300 text-xs flex items-center gap-2.5 transition-all touch-manipulation cursor-pointer active:scale-[0.98]"
+              className="w-full min-h-[46px] p-2.5 rounded-xl bg-[#111820] hover:bg-rose-500/15 border border-[#273444] hover:border-rose-500/30 text-[#94a3b8] hover:text-rose-300 text-xs flex items-center gap-2.5 transition-all touch-manipulation cursor-pointer active:scale-[0.98]"
             >
               <RotateCcw className="w-4 h-4 text-rose-400" />
               <span>Reset All Studio Settings</span>
@@ -274,10 +228,10 @@ export function MobileMenuDrawer({
           </div>
         </div>
 
-        {/* Drawer Footer with Generous Safe-Area Clearance */}
-        <div className="pb-[max(calc(env(safe-area-inset-bottom)+20px),36px)] pt-3 px-4 border-t border-[rgba(125,211,252,0.1)] bg-[rgba(10,14,26,0.8)] text-center shrink-0">
-          <span className="text-[9px] font-mono tracking-widest text-[#7dd3fc]/60 uppercase">
-            Glacier Edition · Atelier Calibrated
+        {/* Drawer Footer with Safe-Area Clearance */}
+        <div className="pb-[max(calc(env(safe-area-inset-bottom)+16px),30px)] pt-3 px-4 border-t border-[#273444] bg-[#0b0f14]/90 text-center shrink-0">
+          <span className="text-[9px] font-mono tracking-widest text-[#94a3b8] uppercase">
+            Architectural Precision Studio
           </span>
         </div>
       </div>

@@ -20,10 +20,10 @@ import {
   SunMoon,
   Crop as CropIcon,
   ChevronDown,
-  Menu,
+  MoreHorizontal,
 } from 'lucide-react';
 
-export type MobileEditTab = 'grid' | 'fit' | 'paper' | 'modes' | 'crop';
+export type MobileEditTab = 'grid' | 'frame' | 'paper' | 'mode' | 'transform';
 
 interface MobileEditDrawerProps {
   grid: GridConfig;
@@ -70,10 +70,10 @@ export function MobileEditDrawer({
 }: MobileEditDrawerProps) {
   const tabs: { id: MobileEditTab; label: string; icon: React.ElementType }[] = [
     { id: 'grid', label: 'Grid', icon: Grid3X3 },
-    { id: 'fit', label: 'Fit', icon: Scaling },
+    { id: 'frame', label: 'Frame', icon: Scaling },
     { id: 'paper', label: 'Paper', icon: Ruler },
-    { id: 'modes', label: 'Modes', icon: SunMoon },
-    { id: 'crop', label: 'Transform', icon: CropIcon },
+    { id: 'mode', label: 'Mode', icon: SunMoon },
+    { id: 'transform', label: 'Transform', icon: CropIcon },
   ];
 
   return (
@@ -82,27 +82,21 @@ export function MobileEditDrawer({
         isMovingImage ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
       }`}
     >
-      {/* Drawer Overlay Container (pointer-events-auto) */}
+      {/* Contextual Bottom Sheet Container (pointer-events-auto) */}
       <div
-        className={`w-full pointer-events-auto transition-all duration-300 ease-in-out flex flex-col shadow-2xl ${
+        className={`w-full pointer-events-auto transition-all duration-300 ease-in-out flex flex-col shadow-2xl bg-[#161e27] ${
           isOpen
-            ? 'h-[58dvh] max-h-[520px] rounded-t-3xl border-t border-[rgba(125,211,252,0.25)]'
-            : 'h-auto rounded-none border-t border-[rgba(125,211,252,0.12)]'
+            ? 'h-[58dvh] max-h-[520px] rounded-t-3xl border-t border-[#273444]'
+            : 'h-auto rounded-none border-t border-[#273444]'
         }`}
-        style={{
-          background: 'linear-gradient(180deg, rgba(15, 21, 36, 0.94) 0%, rgba(10, 14, 26, 0.98) 100%)',
-          backdropFilter: 'blur(32px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(200%)',
-          boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.15)',
-        }}
       >
         {/* Expanded Drawer Top Header with Drag Handle & Close */}
         {isOpen && (
-          <div className="pt-2 px-3 pb-2 border-b border-[rgba(125,211,252,0.12)] bg-[rgba(15,21,36,0.6)] shrink-0 flex flex-col gap-1.5">
+          <div className="pt-2.5 px-3 pb-2 border-b border-[#273444] bg-[#111820]/90 shrink-0 flex flex-col gap-1.5">
             {/* Centered Drag Indicator Handle */}
             <div
               onClick={onToggleOpen}
-              className="w-12 h-1.5 rounded-full bg-[rgba(125,211,252,0.35)] mx-auto cursor-pointer hover:bg-[#7dd3fc] transition-colors"
+              className="w-12 h-1 rounded-full bg-[#334155] mx-auto cursor-pointer hover:bg-[#38bdf8] transition-colors"
             />
 
             {/* Quick Tab Selector Ribbon */}
@@ -115,10 +109,10 @@ export function MobileEditDrawer({
                     <button
                       key={tab.id}
                       onClick={() => onSelectTab(tab.id)}
-                      className={`flex items-center gap-1.5 py-1 px-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all ${
+                      className={`flex items-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold shrink-0 transition-all ${
                         isActive
-                          ? 'bg-[#7dd3fc] text-[#0a0e1a] shadow-[0_0_15px_rgba(125,211,252,0.35)]'
-                          : 'bg-[rgba(10,14,26,0.6)] text-[#94a3b8] hover:text-[#f0f6fc] border border-[rgba(125,211,252,0.1)]'
+                          ? 'bg-[#38bdf8] text-[#0b0f14] font-bold shadow-md shadow-[#38bdf8]/20'
+                          : 'bg-[#161e27] text-[#94a3b8] hover:text-[#f8fafc] border border-[#273444]'
                       }`}
                     >
                       <Icon className="w-3.5 h-3.5" />
@@ -132,7 +126,7 @@ export function MobileEditDrawer({
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={onToggleOpen}
-                  className="p-1.5 rounded-xl bg-[rgba(10,14,26,0.6)] border border-[rgba(125,211,252,0.15)] text-[#7dd3fc] hover:bg-[#7dd3fc]/15 active:scale-95 transition-all"
+                  className="p-1.5 rounded-xl bg-[#161e27] border border-[#273444] text-[#38bdf8] hover:bg-[#38bdf8]/10 active:scale-95 transition-all"
                   title="Minimize Drawer"
                 >
                   <ChevronDown className="w-4 h-4" />
@@ -142,9 +136,9 @@ export function MobileEditDrawer({
           </div>
         )}
 
-        {/* Scrollable Tool Panel Content (when drawer is open) */}
+        {/* Scrollable Contextual Tool Panel Content (when sheet is open) */}
         {isOpen ? (
-          <div className="flex-1 overflow-y-auto p-3.5 pb-[max(calc(env(safe-area-inset-bottom)+36px),56px)] no-scrollbar">
+          <div className="flex-1 overflow-y-auto p-3.5 pb-[max(calc(env(safe-area-inset-bottom)+36px),56px)] no-scrollbar bg-[#161e27]">
             {activeTab === 'grid' && (
               <GridBlueprintBentoCard
                 grid={grid}
@@ -155,7 +149,7 @@ export function MobileEditDrawer({
               />
             )}
 
-            {activeTab === 'fit' && (
+            {activeTab === 'frame' && (
               <ImageFitBentoCard
                 paper={paper}
                 imageWidth={imageWidth}
@@ -178,7 +172,7 @@ export function MobileEditDrawer({
               />
             )}
 
-            {activeTab === 'modes' && (
+            {activeTab === 'mode' && (
               <ModesBentoCard
                 currentMode={mode}
                 onSelectMode={onModeChange}
@@ -187,7 +181,7 @@ export function MobileEditDrawer({
               />
             )}
 
-            {activeTab === 'crop' && (
+            {activeTab === 'transform' && (
               <CropTransformBentoCard
                 transform={transform}
                 onChange={onTransformChange}
@@ -197,10 +191,11 @@ export function MobileEditDrawer({
             )}
           </div>
         ) : (
-          /* Minimized Bottom Tool Bar (Safe-Area compliant) */
-          <nav className="flex items-center justify-around px-2 py-2 pb-[max(env(safe-area-inset-bottom),16px)]">
+          /* Minimized Bottom Tool Dock: Grid | Frame | Paper | Mode | Transform | More */
+          <nav className="flex items-center justify-around px-1 py-1.5 pb-[max(env(safe-area-inset-bottom),14px)] bg-[#161e27]">
             {tabs.map((tab) => {
               const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
@@ -211,27 +206,36 @@ export function MobileEditDrawer({
                       onSelectTab(tab.id);
                     }
                   }}
-                  className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#7dd3fc] active:scale-95 touch-manipulation"
+                  className={`flex-1 min-w-[50px] min-h-[48px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-all active:scale-95 touch-manipulation ${
+                    isActive ? 'text-[#38bdf8]' : 'text-[#94a3b8] hover:text-[#f8fafc]'
+                  }`}
                 >
-                  <div className="p-1.5 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.1)] group-hover:border-[#7dd3fc]/30">
-                    <Icon className="w-4 h-4 text-[#7dd3fc]" />
+                  <div
+                    className={`p-1.5 rounded-xl transition-all ${
+                      isActive
+                        ? 'bg-[#38bdf8]/15 border border-[#38bdf8]/40 text-[#38bdf8]'
+                        : 'bg-[#111820] border border-[#273444] text-[#94a3b8]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
                   </div>
                   <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
 
+            {/* 6. More (Secondary Actions Drawer) */}
             {onOpenMenu && (
               <button
                 onClick={onOpenMenu}
-                className="flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#7dd3fc] active:scale-95 touch-manipulation"
-                title="Studio Menu"
-                aria-label="Studio Menu"
+                className="flex-1 min-w-[50px] min-h-[48px] flex flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-all text-[#94a3b8] hover:text-[#38bdf8] active:scale-95 touch-manipulation"
+                title="More Studio Actions"
+                aria-label="More Studio Actions"
               >
-                <div className="p-1.5 rounded-xl bg-[rgba(15,21,36,0.6)] border border-[rgba(125,211,252,0.1)] hover:border-[#7dd3fc]/30">
-                  <Menu className="w-4 h-4 text-[#7dd3fc]" />
+                <div className="p-1.5 rounded-xl bg-[#111820] border border-[#273444] text-[#94a3b8]">
+                  <MoreHorizontal className="w-4 h-4" />
                 </div>
-                <span className="truncate">Menu</span>
+                <span className="truncate">More</span>
               </button>
             )}
           </nav>

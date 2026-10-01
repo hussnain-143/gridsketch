@@ -143,25 +143,13 @@ export function ExportModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-xl max-h-[92vh] flex flex-col rounded-2xl overflow-hidden text-[#f0f6fc] shadow-2xl animate-in zoom-in-95 duration-150"
-        style={{
-          background: 'rgba(14, 23, 42, 0.92)',
-          backdropFilter: 'blur(28px)',
-          WebkitBackdropFilter: 'blur(28px)',
-          border: '1px solid rgba(125, 211, 252, 0.22)',
-          boxShadow: '0 20px 50px rgba(6, 12, 24, 0.7), 0 0 35px rgba(125, 211, 252, 0.1)',
-        }}
+        className="relative w-full max-w-xl max-h-[92vh] flex flex-col rounded-2xl overflow-hidden text-[#f8fafc] shadow-2xl animate-in zoom-in-95 duration-150 bg-[#161e27] border border-[#273444]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[rgba(125,211,252,0.12)] bg-[rgba(15,21,36,0.6)]">
+        <div className="flex items-center justify-between p-4 border-b border-[#273444] bg-[#0b0f14]/80">
           <div className="flex items-center gap-2.5">
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{
-                background: 'rgba(125, 211, 252, 0.12)',
-                border: '1px solid rgba(125, 211, 252, 0.25)',
-                color: '#7dd3fc',
-              }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center bg-[#111820] border border-[#273444] text-[#38bdf8]"
             >
               <Download className="w-4 h-4" />
             </div>
@@ -226,11 +214,11 @@ export function ExportModal({
                     onClick={() => handleExportModeChange(m.id)}
                     className={`p-2.5 rounded-xl border flex flex-col items-start gap-1 text-left transition-all ${
                       active
-                        ? 'bg-[rgba(125,211,252,0.18)] border-[#7dd3fc]/70 text-[#7dd3fc] font-medium shadow-[0_0_15px_rgba(125,211,252,0.2)]'
-                        : 'bg-[rgba(10,14,26,0.6)] hover:bg-[#7dd3fc]/10 border-[rgba(125,211,252,0.12)] text-[#94a3b8] hover:text-[#f0f6fc]'
+                        ? 'bg-[#38bdf8]/15 border-[#38bdf8]/60 text-[#38bdf8] font-medium shadow-md shadow-[#38bdf8]/15'
+                        : 'bg-[#111820] hover:bg-[#38bdf8]/10 border-[#273444] text-[#94a3b8] hover:text-[#f8fafc]'
                     }`}
                   >
-                    <Icon className="w-4 h-4 text-[#7dd3fc]" />
+                    <Icon className="w-4 h-4 text-[#38bdf8]" />
                     <span className="font-bold text-xs leading-none">{m.title}</span>
                     <span className="text-[10px] text-[#94a3b8] leading-tight line-clamp-1">{m.sub}</span>
                   </button>
@@ -539,23 +527,18 @@ export function ExportModal({
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-[#94a3b8] hover:text-[#f0f6fc] hover:bg-[#7dd3fc]/10 font-medium transition-colors"
+              className="px-4 py-2 rounded-xl text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#38bdf8]/10 font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleExport}
               disabled={isExporting || exportSuccess}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all hover:scale-[1.02] disabled:opacity-70"
-              style={{
-                background: '#7dd3fc',
-                color: '#0a0e1a',
-                boxShadow: '0 0 25px rgba(125, 211, 252, 0.35)',
-              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all hover:scale-[1.02] disabled:opacity-70 bg-[#38bdf8] hover:bg-[#0284c7] text-[#0b0f14] shadow-lg shadow-[#38bdf8]/25"
             >
               {isExporting ? (
                 <>
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-[#0a0e1a] border-t-transparent animate-spin" />
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-[#0b0f14] border-t-transparent animate-spin" />
                   <span>Preparing...</span>
                 </>
               ) : exportSuccess ? (

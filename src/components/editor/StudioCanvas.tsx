@@ -2,16 +2,13 @@
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  Hand,
-  MousePointer,
+  Minus,
+  Plus,
   Eye,
   FileText,
   Move,
-  Scaling,
   Ruler,
+  Upload,
 } from 'lucide-react';
 import { GridConfig, PaperConfig } from '@/types/editor';
 import { drawGridOverlay, drawGridOverlayOnRect, drawPhysicalRulerMargins } from '@/lib/image/grid-renderer';
@@ -30,6 +27,8 @@ interface StudioCanvasProps {
   isMovingImage?: boolean;
   onToggleMoveImage?: () => void;
   onPaperChange?: (updates: Partial<PaperConfig>) => void;
+  onUploadImage?: (file: File) => void;
+  onTriggerUpload?: () => void;
 }
 
 export function StudioCanvas({
@@ -40,12 +39,41 @@ export function StudioCanvas({
   isProcessing,
   paper,
   showPage = true,
-  onToggleShowPage,
   isMovingImage,
   onToggleMoveImage,
   onPaperChange,
+  onUploadImage,
+  onTriggerUpload,
 }: StudioCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onUploadImage) {
+      onUploadImage(file);
+      e.target.value = '';
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/') && onUploadImage) {
+      onUploadImage(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -116,7 +144,6 @@ export function StudioCanvas({
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [panToolActive, setPanToolActive] = useState<boolean>(false);
   const [spacePressed, setSpacePressed] = useState<boolean>(false);
 
   // Before/After split position (0 to 1)
@@ -243,8 +270,8 @@ export function StudioCanvas({
 
   // Drag pan handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Check if middle click or left click with pan tool/space
-    if (e.button === 1 || (e.button === 0 && (spacePressed || panToolActive))) {
+    // Check if middle click or left click with space
+    if (e.button === 1 || (e.button === 0 && spacePressed)) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
     } else if (e.button === 0 && activeMovingImage && pageDims.showPageFrame) {
@@ -517,7 +544,7 @@ export function StudioCanvas({
     }
   }, [processedCanvas, pageDims, grid, paper, showCompare, holdOriginal]);
 
-  const isPanningCursor = spacePressed || panToolActive || isDragging;
+  const isPanningCursor = spacePressed || isDragging;
   const canvasCursor = activeMovingImage
     ? isDraggingImage
       ? 'cursor-grabbing'
@@ -538,24 +565,74 @@ export function StudioCanvas({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className={`relative flex-1 h-full w-full overflow-hidden checkerboard-bg select-none touch-none ${canvasCursor}`}
     >
+      {/* Hidden File Input for Direct Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
+
+      {/* Architectural Studio Empty State (when no image loaded) */}
+      {!processedCanvas && (
+        <div className="absolute inset-0 flex items-center justify-center p-4 z-10 pointer-events-auto">
+          <div
+            className={`max-w-md w-full p-6 sm:p-8 rounded-3xl bg-[#161e27] border transition-all shadow-2xl flex flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200 ${
+              isDragOver ? 'border-[#38bdf8] scale-[1.02] shadow-[#38bdf8]/20' : 'border-[#273444]'
+            }`}
+          >
+            {/* Viewfinder Blueprint Icon Box */}
+            <div className="relative w-20 h-20 rounded-2xl bg-[#111820] border border-[#273444] flex items-center justify-center mb-5 text-[#38bdf8] shadow-inner">
+              <div className="absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-[#38bdf8]" />
+              <div className="absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-[#38bdf8]" />
+              <div className="absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-[#38bdf8]" />
+              <div className="absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-[#38bdf8]" />
+              <Upload className="w-8 h-8 stroke-[1.8]" />
+            </div>
+
+            <h2 className="text-xl sm:text-2xl font-bold text-[#f8fafc] mb-2 tracking-tight">
+              Ready for Drafting
+            </h2>
+            <p className="text-xs sm:text-sm text-[#94a3b8] mb-6 max-w-sm leading-relaxed">
+              Upload or drop a reference photo to calibrate grid lines, scale to physical paper, and apply artistic sketch filters.
+            </p>
+
+            <button
+              onClick={() => onTriggerUpload ? onTriggerUpload() : fileInputRef.current?.click()}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#38bdf8] hover:bg-[#0284c7] text-[#0b0f14] font-bold text-sm transition-all active:scale-95 shadow-lg shadow-[#38bdf8]/25 flex items-center justify-center gap-2 cursor-pointer touch-manipulation"
+            >
+              <Upload className="w-4 h-4 stroke-[2.5]" />
+              <span>Upload Reference Photo</span>
+            </button>
+
+            <span className="mt-4 text-[10px] font-mono tracking-wider text-[#94a3b8]/70 uppercase">
+              Supports PNG, JPG, WebP • Auto-calibrated
+            </span>
+          </div>
+        </div>
+      )}
       {/* Loading Overlay */}
       {isProcessing && (
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[rgba(15,21,36,0.75)] backdrop-blur-xl border border-[rgba(125,211,252,0.25)] text-xs text-[#7dd3fc] font-medium shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_15px_rgba(125,211,252,0.15)]">
-          <div className="w-2.5 h-2.5 rounded-full border-2 border-[#7dd3fc] border-t-transparent animate-spin" />
-          <span>Processing pixels...</span>
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#161e27]/90 backdrop-blur-xl border border-[#273444] text-xs text-[#38bdf8] font-medium shadow-xl">
+          <div className="w-2.5 h-2.5 rounded-full border-2 border-[#38bdf8] border-t-transparent animate-spin" />
+          <span>Calibrating pixels...</span>
         </div>
       )}
 
       {/* Floating Move Image Active Banner */}
       {pageDims.showPageFrame && activeMovingImage && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(15,21,36,0.92)] backdrop-blur-2xl border border-[rgba(125,211,252,0.4)] text-[11px] text-[#bae6fd] font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.6),0_0_24px_rgba(125,211,252,0.2)] animate-in fade-in max-w-[92vw]">
-          <Move className="w-3.5 h-3.5 text-[#7dd3fc] animate-pulse shrink-0" />
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#161e27]/95 backdrop-blur-2xl border border-[#38bdf8]/40 text-[11px] text-[#f8fafc] font-medium shadow-2xl animate-in fade-in max-w-[92vw]">
+          <Move className="w-3.5 h-3.5 text-[#38bdf8] animate-pulse shrink-0" />
           <span className="truncate">Drag photo to frame inside {paper?.preset}</span>
           <button
             onClick={handleToggleMove}
-            className="ml-1 px-2.5 py-0.5 rounded-full bg-[#7dd3fc] hover:bg-[#bae6fd] text-[#0a0e1a] font-bold text-[10px] transition-colors shrink-0 shadow-[0_0_15px_rgba(125,211,252,0.4)]"
+            className="ml-1 px-2.5 py-0.5 rounded-full bg-[#38bdf8] hover:bg-[#0284c7] text-[#0b0f14] font-bold text-[10px] transition-colors shrink-0"
           >
             Done
           </button>
@@ -662,39 +739,40 @@ export function StudioCanvas({
       })()}
 
 
-      {/* Floating Canvas HUD Controls — Compact capsule in Glacier Glass */}
-      <div
-        className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-[rgba(15,21,36,0.75)] backdrop-blur-2xl border border-[rgba(125,211,252,0.18)] shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_20px_rgba(125,211,252,0.08)] text-[#bae6fd] max-w-[calc(100vw-1.5rem)] select-none"
-      >
+      {/* Floating Canvas HUD Controls — Compact capsule in Graphite Blueprint */}
+      {processedCanvas && (
+        <div
+          className="absolute bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 rounded-xl bg-[#161e27]/92 backdrop-blur-xl border border-[#273444] shadow-2xl text-[#94a3b8] max-w-[calc(100vw-1.5rem)] select-none"
+        >
         {/* Fit to Screen */}
         <button
           onClick={handleFitToScreen}
-          className="p-1.5 rounded-full hover:bg-[#7dd3fc]/15 hover:text-[#f0f9ff] text-[#bae6fd] transition-colors shrink-0 active:scale-95"
+          className="px-2 py-1 rounded-lg text-xs font-semibold text-[#f8fafc] hover:bg-[#38bdf8]/15 hover:text-[#38bdf8] transition-colors shrink-0 active:scale-95"
           title="Fit to screen (F)"
         >
-          <Maximize2 className="w-4 h-4" />
+          Fit
         </button>
 
-        {/* 100% 1:1 Scale (Desktop only; on mobile tap % readout) */}
+        {/* 100% 1:1 Scale */}
         <button
           onClick={handle100Percent}
-          className="hidden sm:inline-flex px-2 py-0.5 rounded-full hover:bg-[#7dd3fc]/15 hover:text-[#f0f9ff] text-[#bae6fd] text-[11px] font-semibold font-mono transition-colors shrink-0 active:scale-95"
+          className="px-2 py-1 rounded-lg text-xs font-mono font-medium text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#38bdf8]/15 transition-colors shrink-0 active:scale-95"
           title="Zoom to 100% (1:1 actual pixels)"
         >
           100%
         </button>
 
-        <div className="w-px h-3.5 bg-[rgba(125,211,252,0.15)] mx-0.5 shrink-0" />
+        <div className="w-px h-3.5 bg-[#273444] mx-0.5 shrink-0" />
 
-        {/* Zoom Out */}
+        {/* Zoom Out (−) */}
         <button
           onClick={() => {
             setScale((prev) => Math.max(0.08, prev * 0.85));
           }}
-          className="p-1.5 rounded-full hover:bg-[#7dd3fc]/15 hover:text-[#f0f9ff] text-[#bae6fd] transition-colors shrink-0 active:scale-95"
+          className="p-1.5 rounded-lg hover:bg-[#38bdf8]/15 hover:text-[#f8fafc] text-[#94a3b8] transition-colors shrink-0 active:scale-95"
           title="Zoom Out"
         >
-          <ZoomOut className="w-3.5 h-3.5" />
+          <Minus className="w-3.5 h-3.5" />
         </button>
 
         {/* Zoom Readout (Clickable to toggle 100% / Fit) */}
@@ -706,122 +784,73 @@ export function StudioCanvas({
               handle100Percent();
             }
           }}
-          className="w-10 sm:w-12 text-center text-[10px] sm:text-[11px] font-mono font-medium text-[#bae6fd] hover:text-[#7dd3fc] shrink-0 transition-colors"
+          className="w-11 text-center text-xs font-mono font-medium text-[#38bdf8] hover:underline shrink-0 transition-colors"
           title="Click to toggle 100% / Fit"
         >
           {Math.round(scale * 100)}%
         </button>
 
-        {/* Zoom In */}
+        {/* Zoom In (+) */}
         <button
           onClick={() => {
             setScale((prev) => Math.min(10, prev * 1.15));
           }}
-          className="p-1.5 rounded-full hover:bg-[#7dd3fc]/15 hover:text-[#f0f9ff] text-[#bae6fd] transition-colors shrink-0 active:scale-95"
+          className="p-1.5 rounded-lg hover:bg-[#38bdf8]/15 hover:text-[#f8fafc] text-[#94a3b8] transition-colors shrink-0 active:scale-95"
           title="Zoom In"
         >
-          <ZoomIn className="w-3.5 h-3.5" />
+          <Plus className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-px h-3.5 bg-[rgba(125,211,252,0.15)] mx-0.5 shrink-0" />
+        <div className="w-px h-3.5 bg-[#273444] mx-0.5 shrink-0" />
 
-        {/* Pan Tool Toggle (Desktop; Mobile touch swipe pans natively) */}
-        <button
-          onClick={() => setPanToolActive((prev) => !prev)}
-          className={`hidden sm:inline-flex p-1.5 rounded-full transition-colors shrink-0 ${
-            panToolActive || spacePressed
-              ? 'bg-[#7dd3fc]/25 text-[#7dd3fc] border border-[#7dd3fc]/30'
-              : 'hover:bg-[#7dd3fc]/15 hover:text-[#f0f9ff] text-[#bae6fd]'
-          }`}
-          title="Pan Tool (or hold Spacebar)"
-        >
-          {panToolActive ? <Hand className="w-3.5 h-3.5" /> : <MousePointer className="w-3.5 h-3.5" />}
-        </button>
-
-        {/* Hold to Compare Original (Icon Only) */}
+        {/* Eye: Hold to Compare Original */}
         <button
           onMouseDown={() => setHoldOriginal(true)}
           onMouseUp={() => setHoldOriginal(false)}
           onMouseLeave={() => setHoldOriginal(false)}
           onTouchStart={() => setHoldOriginal(true)}
           onTouchEnd={() => setHoldOriginal(false)}
-          className={`p-1.5 rounded-full transition-all shrink-0 active:scale-95 ${
+          className={`p-1.5 rounded-lg transition-all shrink-0 active:scale-95 ${
             holdOriginal
-              ? 'bg-[#7dd3fc] text-[#0a0e1a] font-bold shadow-[0_0_12px_rgba(125,211,252,0.4)]'
-              : 'hover:bg-[#7dd3fc]/15 text-[#bae6fd]'
+              ? 'bg-[#38bdf8] text-[#0b0f14] font-bold shadow-md shadow-[#38bdf8]/30'
+              : 'hover:bg-[#38bdf8]/15 text-[#94a3b8] hover:text-[#f8fafc]'
           }`}
           title="Press & hold to view original photo"
         >
           <Eye className="w-4 h-4" />
         </button>
 
-        {/* Page Toggle — only when a paper preset is selected (Icon Only) */}
-        {paper && paper.preset !== 'Custom' && onToggleShowPage && (
-          <>
-            <div className="hidden sm:block w-px h-3.5 bg-[rgba(125,211,252,0.15)] mx-0.5 shrink-0" />
-            <button
-              onClick={onToggleShowPage}
-              className={`p-1.5 rounded-full transition-colors shrink-0 active:scale-95 ${
-                showPage
-                  ? 'bg-[#7dd3fc]/20 text-[#7dd3fc] border border-[#7dd3fc]/30'
-                  : 'hover:bg-[#7dd3fc]/15 text-[#64748b]'
-              }`}
-              title={showPage ? `Hide page frame (${paper.preset})` : `Show page frame (${paper.preset})`}
-            >
-              <FileText className="w-4 h-4" />
-            </button>
-          </>
+        {/* Ruler: Physical Ruler Margins Toggle */}
+        {onPaperChange && (
+          <button
+            onClick={() => onPaperChange({ showRulerMargins: !paper?.showRulerMargins })}
+            className={`p-1.5 rounded-lg transition-all shrink-0 active:scale-95 ${
+              paper?.showRulerMargins
+                ? 'bg-[#38bdf8] text-[#0b0f14] font-bold shadow-md shadow-[#38bdf8]/30'
+                : 'hover:bg-[#38bdf8]/15 text-[#94a3b8] hover:text-[#f8fafc]'
+            }`}
+            title={paper?.showRulerMargins ? 'Hide physical ruler margins' : 'Show physical ruler margins (1:1 mm)'}
+          >
+            <Ruler className="w-4 h-4" />
+          </button>
         )}
 
-        {/* Move / Frame Image inside Page Button (Icon Only) */}
+        {/* Move Photo inside Page Frame (when framed) */}
         {pageDims.showPageFrame && (
-          <>
-            <div className="w-px h-3.5 bg-[rgba(125,211,252,0.15)] mx-0.5 shrink-0" />
-            <button
-              onClick={handleToggleMove}
-              className={`p-1.5 rounded-full transition-all shrink-0 active:scale-95 ${
-                activeMovingImage
-                  ? 'bg-[#7dd3fc] text-[#0a0e1a] font-bold shadow-[0_0_12px_rgba(125,211,252,0.4)]'
-                  : 'hover:bg-[#7dd3fc]/15 text-[#bae6fd]'
-              }`}
-              title={activeMovingImage ? 'Done moving photo' : 'Move / frame photo inside page'}
-            >
-              <Move className="w-4 h-4" />
-            </button>
-
-            {/* Physical Ruler Margins Direct Verification Toggle */}
-            {onPaperChange && (
-              <button
-                onClick={() => onPaperChange({ showRulerMargins: !paper?.showRulerMargins })}
-                className={`p-1.5 rounded-full transition-all shrink-0 active:scale-95 ${
-                  paper?.showRulerMargins
-                    ? 'bg-[#7dd3fc] text-[#0a0e1a] font-bold shadow-[0_0_12px_rgba(125,211,252,0.4)]'
-                    : 'hover:bg-[#7dd3fc]/15 text-[#bae6fd]'
-                }`}
-                title={paper?.showRulerMargins ? 'Hide physical ruler margins' : 'Show physical ruler margins (1:1 mm)'}
-              >
-                <Ruler className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* Quick Fit Mode Toggle Button (Icon Only) */}
-            {onPaperChange && (
-              <button
-                onClick={() => {
-                  const modes: ('cover' | 'contain' | 'auto' | 'custom')[] = ['cover', 'contain', 'auto', 'custom'];
-                  const currIdx = modes.indexOf(paper?.fitMode || 'cover');
-                  const nextMode = modes[(currIdx + 1) % modes.length];
-                  onPaperChange({ fitMode: nextMode });
-                }}
-                className="hidden md:flex p-1.5 rounded-full bg-[rgba(125,211,252,0.08)] hover:bg-[#7dd3fc]/15 text-[#7dd3fc] border border-[rgba(125,211,252,0.2)] transition-colors shrink-0 active:scale-95"
-                title={`Fit Mode: ${paper?.fitMode || 'cover'} (Click to cycle)`}
-              >
-                <Scaling className="w-4 h-4" />
-              </button>
-            )}
-          </>
+          <button
+            onClick={handleToggleMove}
+            className={`p-1.5 rounded-lg transition-all shrink-0 active:scale-95 ${
+              activeMovingImage
+                ? 'bg-[#38bdf8] text-[#0b0f14] font-bold shadow-md shadow-[#38bdf8]/30'
+                : 'hover:bg-[#38bdf8]/15 text-[#94a3b8] hover:text-[#f8fafc]'
+            }`}
+            title={activeMovingImage ? 'Done moving photo' : 'Move / frame photo inside page'}
+          >
+            <Move className="w-4 h-4" />
+          </button>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -140,25 +140,13 @@ export function PrintModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-2xl max-h-[94vh] flex flex-col rounded-2xl overflow-hidden text-[#f0f6fc] shadow-2xl animate-in zoom-in-95 duration-150"
-        style={{
-          background: 'rgba(14, 23, 42, 0.92)',
-          backdropFilter: 'blur(28px)',
-          WebkitBackdropFilter: 'blur(28px)',
-          border: '1px solid rgba(125, 211, 252, 0.22)',
-          boxShadow: '0 20px 50px rgba(6, 12, 24, 0.7), 0 0 35px rgba(125, 211, 252, 0.1)',
-        }}
+        className="relative w-full max-w-2xl max-h-[94vh] flex flex-col rounded-2xl overflow-hidden text-[#f8fafc] shadow-2xl animate-in zoom-in-95 duration-150 bg-[#161e27] border border-[#273444]"
       >
         {/* Header */}
-        <div className="no-print flex items-center justify-between p-4 border-b border-[rgba(125,211,252,0.12)] bg-[rgba(15,21,36,0.6)]">
+        <div className="no-print flex items-center justify-between p-4 border-b border-[#273444] bg-[#0b0f14]/80">
           <div className="flex items-center gap-2.5">
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{
-                background: 'rgba(125, 211, 252, 0.12)',
-                border: '1px solid rgba(125, 211, 252, 0.25)',
-                color: '#7dd3fc',
-              }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center bg-[#111820] border border-[#273444] text-[#38bdf8]"
             >
               <Printer className="w-4 h-4" />
             </div>
@@ -184,7 +172,7 @@ export function PrintModal({
         <div className="no-print p-3 bg-[rgba(10,14,26,0.7)] border-b border-[rgba(125,211,252,0.12)] space-y-2 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             {/* Print Mode Selector */}
-            <div className="flex items-center gap-1.5 bg-[rgba(15,21,36,0.8)] p-1 rounded-xl border border-[rgba(125,211,252,0.14)]">
+            <div className="flex items-center gap-1.5 bg-[#161e27] p-1 rounded-xl border border-[#273444]">
               {[
                 { id: 'standard' as ExportMode, label: 'Reference Sheet', icon: Layers },
                 { id: 'blank_grid' as ExportMode, label: 'Blank Grid Sheet', icon: Grid },
@@ -198,8 +186,8 @@ export function PrintModal({
                     onClick={() => setPrintMode(m.id)}
                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
                       active
-                        ? 'bg-[#7dd3fc] text-[#0a0e1a] shadow-sm'
-                        : 'text-[#94a3b8] hover:text-[#f0f6fc] hover:bg-white/5'
+                        ? 'bg-[#38bdf8] text-[#0b0f14] font-bold shadow-sm'
+                        : 'text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#38bdf8]/10'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -216,8 +204,8 @@ export function PrintModal({
                 onClick={() => setIncludeRulerMargins((prev) => !prev)}
                 className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] border transition-colors ${
                   includeRulerMargins
-                    ? 'bg-[#7dd3fc]/15 border-[#7dd3fc]/50 text-[#7dd3fc]'
-                    : 'bg-black/30 border-white/10 text-[#94a3b8]'
+                    ? 'bg-[#38bdf8]/15 border-[#38bdf8]/50 text-[#38bdf8]'
+                    : 'bg-[#111820] border-[#273444] text-[#94a3b8]'
                 }`}
               >
                 <Ruler className="w-3 h-3" />
@@ -230,8 +218,8 @@ export function PrintModal({
                 onClick={() => setIncludeDrafterLegend((prev) => !prev)}
                 className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] border transition-colors ${
                   includeDrafterLegend
-                    ? 'bg-[#7dd3fc]/15 border-[#7dd3fc]/50 text-[#7dd3fc]'
-                    : 'bg-black/30 border-white/10 text-[#94a3b8]'
+                    ? 'bg-[#38bdf8]/15 border-[#38bdf8]/50 text-[#38bdf8]'
+                    : 'bg-[#111820] border-[#273444] text-[#94a3b8]'
                 }`}
               >
                 <Bookmark className="w-3 h-3" />
@@ -294,7 +282,7 @@ export function PrintModal({
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={onClose}
-              className="px-3.5 py-2 rounded-xl text-[#94a3b8] hover:text-[#f0f6fc] hover:bg-[#7dd3fc]/10 font-medium text-xs transition-colors"
+              className="px-3.5 py-2 rounded-xl text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#38bdf8]/10 font-medium text-xs transition-colors"
             >
               Cancel
             </button>
@@ -302,7 +290,7 @@ export function PrintModal({
             <button
               onClick={handlePrintPdfDownload}
               disabled={isPdfGenerating}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[rgba(125,211,252,0.3)] bg-[rgba(15,21,36,0.9)] text-[#7dd3fc] hover:bg-[#7dd3fc]/15 font-semibold text-xs transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#273444] bg-[#161e27] text-[#38bdf8] hover:bg-[#38bdf8]/10 font-semibold text-xs transition-all"
             >
               <FileText className="w-3.5 h-3.5" />
               <span>{isPdfGenerating ? 'Generating PDF...' : 'Save Print PDF'}</span>
@@ -310,12 +298,7 @@ export function PrintModal({
 
             <button
               onClick={handleBrowserPrint}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-xs transition-all hover:scale-[1.02]"
-              style={{
-                background: '#7dd3fc',
-                color: '#0a0e1a',
-                boxShadow: '0 0 25px rgba(125, 211, 252, 0.35)',
-              }}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-xs transition-all hover:scale-[1.02] bg-[#38bdf8] hover:bg-[#0284c7] text-[#0b0f14] shadow-lg shadow-[#38bdf8]/25"
             >
               <Printer className="w-4 h-4 stroke-[2.5]" />
               <span>Print Sheet Now</span>

@@ -1,133 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
-  <defs>
-    <!-- Background Radial Glow -->
-    <radialGradient id="splashBgL" cx="50%" cy="45%" r="75%">
-      <stop offset="0%" stop-color="#141d33" />
-      <stop offset="45%" stop-color="#0a0e1a" />
-      <stop offset="100%" stop-color="#030509" />
-    </radialGradient>
+  <rect width="1920" height="1080" fill="#0B0F14" />
 
-    <!-- Under-Glass Cyan Caustic Aura -->
-    <radialGradient id="splashAuraL" cx="50%" cy="40%" r="35%">
-      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3" />
-      <stop offset="50%" stop-color="#7dd3fc" stop-opacity="0.1" />
-      <stop offset="100%" stop-color="#7dd3fc" stop-opacity="0" />
-    </radialGradient>
+  <!-- Subtle Ambient Radial Glow -->
+  <radialGradient id="splashGlowLand" cx="50%" cy="45%" r="40%">
+    <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.12" />
+    <stop offset="100%" stop-color="#0B0F14" stop-opacity="0" />
+  </radialGradient>
+  <rect width="1920" height="1080" fill="url(#splashGlowLand)" />
 
-    <radialGradient id="splashLavenderL" cx="62%" cy="44%" r="28%">
-      <stop offset="0%" stop-color="#c8a0f0" stop-opacity="0.15" />
-      <stop offset="70%" stop-color="#c8a0f0" stop-opacity="0" />
-    </radialGradient>
+  <!-- Centered G-Grid Emblem -->
+  <g transform="translate(960, 460) scale(0.65) translate(-256, -256)">
+    <!-- Blueprint Drafting Grid -->
+    <g stroke="#334155" stroke-width="2.5" opacity="0.65">
+      <line x1="80" y1="120" x2="432" y2="120" />
+      <line x1="80" y1="188" x2="432" y2="188" />
+      <line x1="80" y1="256" x2="432" y2="256" />
+      <line x1="80" y1="324" x2="432" y2="324" />
+      <line x1="80" y1="392" x2="432" y2="392" />
 
-    <!-- Glass Specular Rim -->
-    <linearGradient id="splashGlassRimL" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
-      <stop offset="25%" stop-color="#7dd3fc" stop-opacity="0.85" />
-      <stop offset="65%" stop-color="#38bdf8" stop-opacity="0.4" />
-      <stop offset="100%" stop-color="#c8a0f0" stop-opacity="0.8" />
-    </linearGradient>
-
-    <!-- Glass Fill -->
-    <linearGradient id="splashGlassFillL" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15" />
-      <stop offset="40%" stop-color="#7dd3fc" stop-opacity="0.06" />
-      <stop offset="100%" stop-color="#0a0e1a" stop-opacity="0.75" />
-    </linearGradient>
-
-    <!-- Specular Top Rim -->
-    <linearGradient id="splashSpecularL" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#7dd3fc" stop-opacity="0" />
-      <stop offset="35%" stop-color="#ffffff" stop-opacity="0.95" />
-      <stop offset="65%" stop-color="#7dd3fc" stop-opacity="0.95" />
-      <stop offset="100%" stop-color="#7dd3fc" stop-opacity="0" />
-    </linearGradient>
-
-    <!-- Typography Gradient -->
-    <linearGradient id="brandTextGradL" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#7dd3fc" />
-      <stop offset="100%" stop-color="#38bdf8" />
-    </linearGradient>
-
-    <!-- Target Node Aura -->
-    <radialGradient id="targetNodeGlowL" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="35%" stop-color="#7dd3fc" />
-      <stop offset="70%" stop-color="#0284c7" stop-opacity="0.6" />
-      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
-    </radialGradient>
-  </defs>
-
-  <!-- Deep Background -->
-  <rect width="1920" height="1080" fill="url(#splashBgL)" />
-
-  <!-- Ethereal Under-Glass Light Halos -->
-  <circle cx="960" cy="420" r="420" fill="url(#splashAuraL)" />
-  <circle cx="1080" cy="480" r="280" fill="url(#splashLavenderL)" />
-
-  <!-- Center Glassmorphism Emblem (260x260 centered at 960, 400) -->
-  <g transform="translate(830, 270) scale(0.5078125)">
-    <!-- Glass Shadow -->
-    <rect x="68" y="76" width="376" height="376" rx="76" fill="#000000" fill-opacity="0.55" filter="blur(18px)" />
-
-    <!-- Frosted Glass Slate -->
-    <rect x="68" y="68" width="376" height="376" rx="76"
-          fill="url(#splashGlassFillL)"
-          stroke="url(#splashGlassRimL)"
-          stroke-width="3" />
-
-    <!-- Top Specular Highlight Edge -->
-    <path d="M 130 69.5 L 382 69.5" stroke="url(#splashSpecularL)" stroke-width="3" stroke-linecap="round" />
-
-    <!-- Corner Viewfinder Brackets -->
-    <g stroke="#7dd3fc" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M 120 162 V 120 H 162" />
-      <path d="M 350 120 H 392 V 162" />
-      <path d="M 120 350 V 392 H 162" />
-      <path d="M 350 392 H 392 V 350" />
+      <line x1="120" y1="80" x2="120" y2="432" />
+      <line x1="188" y1="80" x2="188" y2="432" />
+      <line x1="256" y1="80" x2="256" y2="432" />
+      <line x1="324" y1="80" x2="324" y2="432" />
+      <line x1="392" y1="80" x2="392" y2="432" />
     </g>
 
-    <!-- Inner 3x3 Artist Grid Frame -->
-    <rect x="136" y="136" width="240" height="240" rx="24"
-          fill="rgba(10, 14, 26, 0.45)"
-          stroke="#7dd3fc"
-          stroke-width="2.5" />
+    <!-- Precision Corner Crop Marks -->
+    <g stroke="#38BDF8" stroke-width="2.5" opacity="0.5" stroke-linecap="round">
+      <path d="M 68 84 H 84 V 68" fill="none" />
+      <path d="M 444 84 H 428 V 68" fill="none" />
+      <path d="M 68 428 H 84 V 444" fill="none" />
+      <path d="M 444 428 H 428 V 444" fill="none" />
+    </g>
 
-    <!-- Grid Subdivisions (Dashed Tracks) -->
-    <line x1="216" y1="136" x2="216" y2="376" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="4 3" stroke-opacity="0.8" />
-    <line x1="296" y1="136" x2="296" y2="376" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="4 3" stroke-opacity="0.8" />
-    <line x1="136" y1="216" x2="376" y2="216" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="4 3" stroke-opacity="0.8" />
-    <line x1="136" y1="296" x2="376" y2="296" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="4 3" stroke-opacity="0.8" />
+    <!-- Stylized Geometric G -->
+    <path d="M 372 168 
+             C 344 120, 304 104, 256 104 
+             C 172 104, 112 172, 112 256 
+             C 112 340, 172 408, 256 408 
+             C 336 408, 396 348, 396 268 
+             L 396 256 
+             L 256 256"
+          fill="none"
+          stroke="#F8FAFC"
+          stroke-width="38"
+          stroke-linecap="round"
+          stroke-linejoin="round" />
 
-    <!-- Center Diagonal Crosshairs -->
-    <line x1="216" y1="216" x2="296" y2="296" stroke="#7dd3fc" stroke-width="3.2" stroke-linecap="round" stroke-opacity="0.9" />
-    <line x1="296" y1="216" x2="216" y2="296" stroke="#7dd3fc" stroke-width="3.2" stroke-linecap="round" stroke-opacity="0.9" />
-
-    <!-- Central Precision Reticle -->
-    <circle cx="256" cy="256" r="30" stroke="#c8a0f0" stroke-width="2" stroke-opacity="0.85" fill="none" />
-    <circle cx="256" cy="256" r="18" fill="url(#targetNodeGlowL)" />
-    <circle cx="256" cy="256" r="18" stroke="#ffffff" stroke-width="1.8" fill="none" stroke-opacity="0.95" />
-    <circle cx="256" cy="256" r="6" fill="#0a0e1a" />
-    <circle cx="254" cy="254" r="2.2" fill="#ffffff" />
+    <!-- Cyan Reticle Node -->
+    <circle cx="256" cy="256" r="14" fill="#38BDF8" />
+    <circle cx="256" cy="256" r="28" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-dasharray="4 3" opacity="0.9" />
   </g>
 
-  <!-- Typography: GridSketch -->
-  <text x="960" y="615" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif" font-weight="800" font-size="58" fill="#f0f6fc" letter-spacing="1">
-    Grid<tspan fill="url(#brandTextGradL)">Sketch</tspan>
-  </text>
-
-  <!-- Subtitle Tagline -->
-  <text x="960" y="660" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif" font-weight="600" font-size="13" fill="#94a3b8" letter-spacing="6">
-    DIGITAL DRAWING ASSISTANT
-  </text>
-
-  <!-- Subtle Glass Divider -->
-  <g transform="translate(870, 692)">
-    <line x1="0" y1="0" x2="180" y2="0" stroke="rgba(125,211,252,0.2)" stroke-width="1" />
-    <circle cx="90" cy="0" r="2.5" fill="#7dd3fc" />
-  </g>
-
-  <!-- Atelier Edition Indicator -->
-  <text x="960" y="722" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="600" font-size="10.5" fill="#7dd3fc" letter-spacing="4" opacity="0.85">
-    GLACIER EDITION · ATELIER CALIBRATED
-  </text>
+  <!-- Typography -->
+  <text x="960" y="700" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="44" fill="#F8FAFC" letter-spacing="1">Grid<tspan fill="#38BDF8">Sketch</tspan></text>
+  <text x="960" y="740" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="13" fill="#94A3B8" letter-spacing="3.5">PRECISION DRAFTING STUDIO</text>
 </svg>

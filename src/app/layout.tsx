@@ -14,11 +14,11 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0a0e1a",
+  themeColor: "#0b0f14",
 };
 
 export const metadata: Metadata = {
-  title: "GridSketch — Digital Drawing Assistant for Artists",
+  title: "GridSketch — Precision Drawing & Drafting Studio",
   description:
     "Transform any photo into a calibrated drawing reference. Customizable grids, diagonal crosses, continuous tonal values, and physical paper ruler scaling.",
   manifest: "/manifest.webmanifest",
@@ -33,14 +33,14 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "GridSketch — Digital Drawing Assistant for Artists",
+    title: "GridSketch — Precision Drawing & Drafting Studio",
     description: "Transform any photo into a calibrated drawing reference. Precision grids, continuous tonal values & physical paper ruler scaling.",
     siteName: "GridSketch",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "GridSketch — Digital Drawing Assistant for Artists",
+    title: "GridSketch — Precision Drawing & Drafting Studio",
     description: "Transform any photo into a calibrated drawing reference. Precision grids & drawing modes.",
   },
 };
@@ -55,7 +55,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} font-sans h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-[#0a0e1a] text-[#f0f6fc] font-sans">
+      <body className="min-h-full flex flex-col bg-[#0b0f14] text-[#f8fafc] font-sans">
         <AnimatedSplashScreen />
         {children}
       </body>

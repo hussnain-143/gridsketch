@@ -42,6 +42,8 @@ interface BentoGridDashboardProps {
   onOpenPrint: () => void;
   onOpenExport: () => void;
   onExpandFocus: () => void;
+  onUploadImage?: (file: File) => void;
+  onTriggerUpload?: () => void;
 }
 
 export function BentoGridDashboard({
@@ -70,6 +72,8 @@ export function BentoGridDashboard({
   onOpenPrint,
   onOpenExport,
   onExpandFocus,
+  onUploadImage,
+  onTriggerUpload,
 }: BentoGridDashboardProps) {
   return (
     <div className="relative flex-1 w-full h-full overflow-y-auto bg-[#0a0e1a] p-3 sm:p-5 md:p-6 no-scrollbar">
@@ -103,6 +107,8 @@ export function BentoGridDashboard({
             imageWidth={imageWidth}
             imageHeight={imageHeight}
             onExpandFullscreen={onExpandFocus}
+            onUploadImage={onUploadImage}
+            onTriggerUpload={onTriggerUpload}
             colSpan="col-span-1 md:col-span-2 lg:col-span-2 xl:col-span-2 row-span-2"
           />
 

@@ -10,7 +10,6 @@ import {
   PaperConfig,
   EditorHistoryEntry,
 } from '@/types/editor';
-import { SAMPLE_IMAGES } from '@/lib/image/sample-images';
 import { applyTransforms, processImageCanvas } from '@/lib/image/pipeline';
 import { debounce } from '@/lib/utils/performance';
 import { StudioHeader, LayoutMode } from '@/components/editor/StudioHeader';
@@ -62,8 +61,8 @@ const DEFAULT_PAPER: PaperConfig = {
 };
 
 export default function EditorPage() {
-  // Image State
-  const [imageName, setImageName] = useState<string>('Classical Sculpture Bust');
+  // Image State (Clean empty drafting canvas by default)
+  const [imageName, setImageName] = useState<string>('');
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
 
   // Editor Settings
@@ -165,7 +164,7 @@ export default function EditorPage() {
     pushHistoryDebounced();
   }, [pushHistoryDebounced]);
 
-  // Load initial sample image or uploaded image from landing page / URL
+  // Load uploaded image from session storage if transferred from splash / landing
   useEffect(() => {
     try {
       const storedUpload = sessionStorage.getItem('gridsketch_custom_upload');
@@ -175,46 +174,15 @@ export default function EditorPage() {
         img.crossOrigin = 'anonymous';
         img.onload = () => {
           setLoadedImage(img);
-          setImageName(storedName || 'Uploaded Image');
+          setImageName(storedName || 'Uploaded Reference');
           sessionStorage.removeItem('gridsketch_custom_upload');
           sessionStorage.removeItem('gridsketch_custom_name');
         };
         img.src = storedUpload;
-        return;
       }
     } catch (e) {
       console.warn('Session storage check skipped:', e);
     }
-
-    // Check if a specific sample was requested in the URL
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const requestedSampleId = urlParams.get('sample');
-      if (requestedSampleId) {
-        const found = SAMPLE_IMAGES.find((s) => s.id === requestedSampleId);
-        if (found) {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => {
-            setLoadedImage(img);
-            setImageName(found.title);
-          };
-          img.src = found.dataUrl;
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('URL params check skipped:', e);
-    }
-
-    const defaultSample = SAMPLE_IMAGES[0];
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      setLoadedImage(img);
-      setImageName(defaultSample.title);
-    };
-    img.src = defaultSample.dataUrl;
   }, []);
 
   // Undo Action
@@ -358,22 +326,6 @@ export default function EditorPage() {
     reader.readAsDataURL(file);
   };
 
-  // Sample select handler
-  const handleSelectSample = (sampleId: string) => {
-    const sample = SAMPLE_IMAGES.find((s) => s.id === sampleId);
-    if (!sample) return;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      setLoadedImage(img);
-      setImageName(sample.title);
-      setTransform(DEFAULT_TRANSFORM);
-      pushHistory();
-      showToast(`Loaded reference: ${sample.title}`, 'info');
-    };
-    img.src = sample.dataUrl;
-  };
-
   // Reset all
   const handleResetAll = () => {
     setGrid(DEFAULT_GRID);
@@ -431,14 +383,13 @@ export default function EditorPage() {
       : 'Chiaroscuro';
 
   return (
-    <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-[#0a0e1a] text-[#f0f6fc]">
+    <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-[#0b0f14] text-[#f8fafc]">
       {/* Studio Header */}
       <StudioHeader
         imageName={imageName}
         imageWidth={processedCanvas?.width || loadedImage?.naturalWidth || 0}
         imageHeight={processedCanvas?.height || loadedImage?.naturalHeight || 0}
         onUploadImage={handleUploadImage}
-        onSelectSample={handleSelectSample}
         onResetAll={handleResetAll}
         canUndo={canUndo}
         canRedo={canRedo}
@@ -462,8 +413,8 @@ export default function EditorPage() {
             toast.type === 'error'
               ? 'bg-[#ef4444]/20 border-[#ef4444]/40 text-[#fca5a5] shadow-[0_0_20px_rgba(239,68,68,0.2)]'
               : toast.type === 'success'
-              ? 'bg-[#10b981]/20 border-[#10b981]/40 text-[#6ee7b7] shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-              : 'bg-[#0f172a]/90 border-[rgba(125,211,252,0.3)] text-[#7dd3fc] shadow-[0_0_20px_rgba(125,211,252,0.2)]'
+              ? 'bg-[#22c55e]/20 border-[#22c55e]/40 text-[#4ade80] shadow-[0_0_20px_rgba(34,197,94,0.2)]'
+              : 'bg-[#161e27] border-[#273444] text-[#38bdf8] shadow-[0_0_20px_rgba(56,189,248,0.15)]'
           }`}
         >
           <span>{toast.message}</span>
@@ -487,6 +438,12 @@ export default function EditorPage() {
             onToggleMoveImage={() => setIsMovingImage((prev) => !prev)}
             onPaperChange={(updates) => {
               setPaper((prev) => ({ ...prev, ...updates }));
+            }}
+            onUploadImage={handleUploadImage}
+            onTriggerUpload={() => {
+              const fileInput = (document.getElementById('studio-file-input') ||
+                document.querySelector('input[type="file"]')) as HTMLInputElement;
+              fileInput?.click();
             }}
           />
         </div>
@@ -574,6 +531,12 @@ export default function EditorPage() {
             onOpenPrint={() => setIsPrintOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
             onExpandFocus={() => setLayoutMode('focus')}
+            onUploadImage={handleUploadImage}
+            onTriggerUpload={() => {
+              const fileInput = (document.getElementById('studio-file-input') ||
+                document.querySelector('input[type="file"]')) as HTMLInputElement;
+              fileInput?.click();
+            }}
           />
         ) : (
           /* Studio Split & Zen Focus Layouts */
@@ -635,6 +598,12 @@ export default function EditorPage() {
                 onPaperChange={(updates) => {
                   setPaper((prev) => ({ ...prev, ...updates }));
                 }}
+                onUploadImage={handleUploadImage}
+                onTriggerUpload={() => {
+                  const fileInput = (document.getElementById('studio-file-input') ||
+                    document.querySelector('input[type="file"]')) as HTMLInputElement;
+                  fileInput?.click();
+                }}
               />
             </main>
           </div>
@@ -651,7 +620,6 @@ export default function EditorPage() {
             document.querySelector('input[type="file"]')) as HTMLInputElement;
           fileInput?.click();
         }}
-        onSelectSample={handleSelectSample}
         currentImageName={imageName}
         onResetAll={handleResetAll}
         canUndo={canUndo}
